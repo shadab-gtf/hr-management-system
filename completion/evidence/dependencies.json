@@ -1,0 +1,60 @@
+{
+  "date": "2026-09-28",
+  "node": "v22.20.0",
+  "dependencies": {
+    "@radix-ui/react-dialog": {
+      "version": "1.1.23",
+      "license": "MIT"
+    },
+    "@tanstack/react-query": {
+      "version": "5.104.0",
+      "license": "MIT"
+    },
+    "boneyard-js": {
+      "version": "1.10.0",
+      "license": "MIT"
+    },
+    "framer-motion": {
+      "version": "13.4.4",
+      "license": "MIT"
+    },
+    "iconsax-reactjs": {
+      "version": "0.0.8",
+      "license": "MIT"
+    },
+    "next": {
+      "version": "16.3.6",
+      "license": "MIT"
+    },
+    "react": {
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    "react-dom": {
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    "server-only": {
+      "version": "0.0.1",
+      "license": "MIT"
+    },
+    "sonner": {
+      "version": "2.0.8",
+      "license": "MIT"
+    },
+    "zod": {
+      "version": "4.6.5",
+      "license": "MIT"
+    }
+  },
+  "assets": {
+    "app/fonts/google-sans-latin.woff2": {
+      "bytes": 35968,
+      "sha256": "3f43e613a4176decfb0ab2e4cf68bfcfbebe9eee1a3de080c4115426258fa32f"
+    },
+    "public/brand/gtf-logo.png": {
+      "bytes": 33867,
+      "sha256": "9f05c881488085bf1d69f422b8fa547a8af37eb52cd55f92ca639ec052f1803f"
+    }
+  }
+}

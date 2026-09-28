@@ -1,0 +1,14 @@
+{
+  "breakpoints": [360, 540, 768, 900, 1024, 1180, 1280, 1440],
+  "out": "./lib/bones",
+  "wait": 2000,
+  "color": "var(--skeleton)",
+  "darkColor": "var(--skeleton)",
+  "animate": "pulse",
+  "skeletons": {
+    "foundation": {
+      "route": "/",
+      "wait": 2000
+    }
+  }
+}
