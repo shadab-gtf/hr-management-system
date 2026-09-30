@@ -56,6 +56,8 @@ Role bundles may coexist. An explicit business prohibition overrides their union
 | `identity.manage` / `integration.manage` | IT | Named scope, step-up for sensitive changes, no content access implication |
 | `role.grant.request` / `role.grant.approve` | Authorized admin / independent approver | Requested scope/expiry/reason; no self-elevation |
 
+Implemented in the FE3 mock seed (review before the live policy seed): `event.manage`, `letter.issue` and `import.commit` for HR operators; `loan.approve` for payroll approvers; `compensation.manage` for payroll operators, whose salary batches need an independent `payroll.approve` holder. `policy.publish` currently covers holidays, leave types, shifts/overtime, sites, organization and probation.
+
 Later modules add namespaced keys (for example `expense.submit.self`, `expense.approve`, `performance.review.release`, `recruitment.read`) in reviewed permission-seed migrations before implementation. Avoid wildcard permissions in UI or arbitrary permission strings from browser input.
 
 ## Evaluation algorithm
@@ -86,3 +88,18 @@ Break-glass access needs named identity, reason, short validity, independent app
 ## Acceptance scenarios
 
 Test own versus other employee, current versus historical team, entity/pay-group boundaries, hidden fields, direct URL/action/API calls, service principal limits, missing scan/publication state, expired/revoked role, cache reuse across sessions, delegation to self, actor with multiple roles, old approval digest, changed rights during export and absent step-up. T-01–03/T-06/T-10/T-14/T-17/T-21 cover these surfaces; add cases whenever the capability catalog changes.
+
+## FE4 capability additions (mock grants, 2026-09-30)
+
+| Capability | Mock roles | Purpose |
+| --- | --- | --- |
+| `statutory.manage` | payroll operator, payroll approver | Statutory setup, identifiers, returns, challans, Form 16 generation |
+| `timesheet.submit.self` / `timesheet.approve` / `project.manage` | employee / manager / manager, HR | Timesheets, approvals, projects |
+| `roster.manage` | manager, HR | Shift roster planning, publishing and swap decisions |
+| `exit.request.self` | employee | Resignation |
+| `settlement.prepare` / `settlement.approve` | HR, payroll operator / payroll approver | F&F maker and independent checker |
+| `asset.read.self` / `asset.manage` | employee / HR | Own assets and requests; inventory and assignment |
+| `performance.self` / `performance.review` / `performance.manage` | employee / manager / HR | Goals and reviews; team reviews; cycles and calibration |
+| `recruitment.manage` / `candidate.interview` | HR / manager | ATS administration; requisitions and scorecards |
+| `survey.manage` | HR | Surveys and poll moderation |
+| `report.build` | HR, payroll operator, payroll approver | Custom report builder; salary columns additionally require payroll or compensation access |

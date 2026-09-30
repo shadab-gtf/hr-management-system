@@ -7,7 +7,7 @@ import {
   personRefSchema,
 } from "@/types/common";
 
-export const approvalKindSchema = z.enum(["leave", "regularization", "expense"]);
+export const approvalKindSchema = z.enum(["leave", "regularization", "permission", "expense"]);
 
 export const approvalItemSchema = z.object({
   id: z.string(),
@@ -44,6 +44,14 @@ export const approvalItemSchema = z.object({
       reason: z.string(),
     }),
     z.object({
+      kind: z.literal("permission"),
+      date: isoDateSchema,
+      from: z.string(),
+      to: z.string(),
+      minutes: z.number().int(),
+      reason: z.string(),
+    }),
+    z.object({
       kind: z.literal("expense"),
       category: z.string(),
       amount: moneySchema,
@@ -73,3 +81,14 @@ export const approvalDecisionInputSchema = z
 export type ApprovalKind = z.infer<typeof approvalKindSchema>;
 export type ApprovalItem = z.infer<typeof approvalItemSchema>;
 export type ApprovalDecisionInput = z.infer<typeof approvalDecisionInputSchema>;
+
+/** Decisions handled on module pages, surfaced in the inbox as counts. */
+export const workQueueItemSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  detail: z.string(),
+  icon: z.enum(["calendarCheck", "swap", "moneyIn", "task", "userRemove", "calculator", "box", "flag", "userAdd", "briefcase", "clipboard"]),
+  href: z.string(),
+  count: z.number().int().positive(),
+});
+export type WorkQueueItem = z.infer<typeof workQueueItemSchema>;

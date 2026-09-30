@@ -2,6 +2,23 @@
 
 This log separates specification releases from application releases. Dates use ISO 8601. Do not imply an application version was shipped because documents changed.
 
+## FE4 application — 2026-09-30 (mock backend)
+
+- Statutory payroll: legal entities, EPF/ESI/PT/LWF/TDS engine, ECR/ESI/PT/LWF/24Q files, challan register, salary structures with approval, payroll inputs and holds, NEFT bank advice, Form 16.
+- Leave ledger with policy rules, comp-off, encashment paid through payroll, year-end processing; shift roster with swaps driving attendance; late/early policy.
+- Resignation, clearances, exit interview, full & final settlement (maker ≠ checker), assets, letter templates, policy acknowledgements.
+- Performance cycles, goals, reviews, calibration and feedback; recruitment with careers page and hire conversion; polls, surveys, praise; timesheets and projects.
+- Report builder and analytics, SMS/WhatsApp preferences, Hindi shell, approvals work queue, header light/dark toggle.
+- Evidence and limits: ../../completion/FE4.md. No backend, live data, filing or production release.
+
+## FE3 application — 2026-09-29 (mock backend)
+
+- HR administration screens: holidays by location, events and celebrations, leave policy versions (including a work-from-home type), shifts with presets, department shift assignment, overtime policy, office sites, departments/locations, probation defaults (0–6 months), onboarding/exit checklists, offboarding, service-request queue, scheduled and targeted announcements.
+- Employee lifecycle: add employee, effective-dated job changes, start/complete exit.
+- Face-device attendance import (CSV/.xlsx, staged dry run, one-time commit) and salary import with independent approval.
+- Monthly payroll register and attendance CSV downloads; notification preferences; compact install card.
+- Evidence and limits: ../../completion/FE3.md. No backend, live data or production release.
+
 ## FE1 application 0.1.0 — 2026-09-28
 
 - Implemented Next.js frontend foundation with Google Sans, logo-based themes, Iconsax and typed synthetic data.

@@ -1,4 +1,5 @@
-import { FoundationSkeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/skeletons";
+
 export default function Loading() {
-  return <FoundationSkeleton />;
+  return <PageSkeleton label="Loading GTF HR" variant="dashboard" />;
 }

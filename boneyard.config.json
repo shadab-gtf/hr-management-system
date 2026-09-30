@@ -7,7 +7,7 @@
   "animate": "pulse",
   "skeletons": {
     "foundation": {
-      "route": "/",
+      "route": "/foundation",
       "wait": 2000
     }
   }

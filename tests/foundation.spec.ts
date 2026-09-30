@@ -14,7 +14,7 @@ test("server renders fixtures, hydrates without errors, and loads local Google S
     if (!request.url().startsWith("http://127.0.0.1:"))
       external.push(request.url());
   });
-  const response = await page.goto("/");
+  const response = await page.goto("/foundation");
   expect(response?.status()).toBe(200);
   expect(await response?.text()).toContain("Aanya Sharma");
   await expect(
@@ -32,7 +32,7 @@ test("server renders fixtures, hydrates without errors, and loads local Google S
 test("theme persists across reload and system preference follows the OS", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/foundation");
   await page.getByLabel("Appearance").selectOption("dark");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -53,7 +53,7 @@ test("theme persists across reload and system preference follows the OS", async 
 test("form validates, preview dialog traps focus, Escape restores focus, Sonner supplements inline feedback", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/foundation");
   await page.getByRole("button", { name: "Preview profile" }).click();
   await expect(page.getByLabel("Full name")).toHaveAttribute(
     "aria-invalid",
@@ -89,7 +89,7 @@ test("form validates, preview dialog traps focus, Escape restores focus, Sonner 
 test("query-backed table filters fixtures and recovers from an empty result", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/foundation");
   const search = page.getByLabel("Search sample people");
   await search.fill("Engineering");
   await expect(page.getByRole("row")).toHaveCount(2);
@@ -110,7 +110,7 @@ for (const width of [360, 768, 1280, 1440]) {
       page,
     }) => {
       await page.setViewportSize({ width, height: 1000 });
-      await page.goto("/");
+      await page.goto("/foundation");
       await page.getByLabel("Appearance").selectOption(theme);
       await page.evaluate(() => document.fonts.ready);
       expect(
@@ -135,7 +135,7 @@ test("reduced motion disables skeleton movement and keyboard skip link works", a
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/foundation");
   await expect(
     page.getByRole("heading", { name: "Good work starts here." }),
   ).toBeVisible();
@@ -156,12 +156,11 @@ test("reduced motion disables skeleton movement and keyboard skip link works", a
 test("unknown routes show a safe 404", async ({ page }) => {
   await page.goto("/not-a-real-page");
   await expect(
-    page.getByRole("heading", { name: "Nothing here just yet." }),
+    page.getByRole("heading", { name: "We couldn’t find that page" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Back to foundation" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Good work starts here." }),
-  ).toBeVisible();
+  // Home is authenticated, so the recovery link lands on sign-in when signed out.
+  await page.getByRole("link", { name: "Go to home" }).click();
+  await expect(page).toHaveURL(/\/login/);
 });
 
 for (const width of [360, 768, 1280, 1440]) {
@@ -182,7 +181,7 @@ for (const width of [360, 768, 1280, 1440]) {
     expect(
       await bone.evaluate((element) => getComputedStyle(element).animationName),
     ).toBe("none");
-    await page.locator("a.brand").click();
+    await page.locator("a.brand").first().click();
     await expect(
       page.getByRole("heading", { name: "Good work starts here." }),
     ).toBeVisible();
@@ -198,7 +197,7 @@ for (const reduced of [false, true]) {
       await page.emulateMedia({
         reducedMotion: reduced ? "reduce" : "no-preference",
       });
-      await page.goto("/");
+      await page.goto("/foundation");
       await expect(page.locator("#workspace-sidebar")).toHaveCount(1);
       const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
       await expect
@@ -239,7 +238,7 @@ test("mobile sidebar collapses without leaving hidden links keyboard-accessible"
   page,
 }) => {
   await page.setViewportSize({ width: 360, height: 900 });
-  await page.goto("/");
+  await page.goto("/foundation");
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await expect(page.locator("#workspace-sidebar")).toHaveAttribute("inert", "");
   await expect

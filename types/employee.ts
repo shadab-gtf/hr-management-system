@@ -16,6 +16,7 @@ export const employeeListItemSchema = z.object({
   code: z.string(),
   name: z.string(),
   initials: z.string(),
+  photoUrl: z.string().nullable(),
   designation: z.string(),
   department: z.string(),
   location: z.string(),
@@ -35,7 +36,7 @@ export const employeeFacetsSchema = z.object({
 
 export const employmentEventSchema = z.object({
   id: z.string(),
-  kind: z.enum(["joined", "promotion", "transfer", "manager_change", "confirmation"]),
+  kind: z.enum(["joined", "promotion", "transfer", "manager_change", "confirmation", "job_change", "exit"]),
   title: z.string(),
   detail: z.string(),
   effectiveOn: isoDateSchema,
@@ -62,6 +63,10 @@ export const employeeDetailSchema = employeeListItemSchema.extend({
       bankAccountMasked: z.string(),
     })
     .nullable(),
+  /** Optimistic-concurrency version for HR edits. */
+  version: z.number().int(),
+  exit: z.object({ lastWorkingDay: isoDateSchema, reason: z.string() }).nullable(),
+  probation: z.object({ months: z.number().int(), endsOn: isoDateSchema.nullable(), status: z.enum(["none", "on_probation", "confirmed"]) }),
   permissions: z.object({
     canEdit: z.boolean(),
     canViewPrivate: z.boolean(),

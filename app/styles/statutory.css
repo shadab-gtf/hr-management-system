@@ -1,0 +1,120 @@
+/* statutory module styles. Tokens only (app/styles/app.css :root); no hardcoded colors. */
+
+.stat-cell {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  min-width: 0;
+}
+.stat-cell .button {
+  margin-left: -8px;
+}
+.stat-file--off {
+  font-size: var(--fs-caption);
+}
+.stat-subhead {
+  margin: 0;
+  font-size: var(--fs-heading);
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Register disclosure on the run workbench */
+.stat-details > summary {
+  cursor: pointer;
+  padding: 12px 20px;
+  font-size: var(--fs-secondary);
+  font-weight: 600;
+  color: var(--secondary);
+  list-style-position: inside;
+}
+.stat-details > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.stat-details[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+/* PT slab editor: four fields per slab, two columns on phones */
+.stat-slab {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  min-width: 0;
+}
+.stat-slab legend {
+  padding: 0 4px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--muted);
+}
+@media (min-width: 640px) {
+  .stat-slab {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.stat-slab-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+}
+
+/* Structure change cards */
+.stat-change {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--canvas);
+  min-width: 0;
+}
+.stat-change p {
+  margin: 0;
+  font-size: var(--fs-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* Form 16 certificate */
+.stat-form16-head {
+  display: grid;
+  gap: 4px;
+  padding: 20px 20px 0;
+}
+.stat-form16-head h2 {
+  margin: 0;
+  font-size: var(--fs-heading);
+  line-height: 1.35;
+}
+.stat-form16-head p {
+  margin: 0;
+}
+.stat-line--indent dt {
+  padding-left: 12px;
+}
+.stat-ref {
+  display: inline-block;
+  min-width: 44px;
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+@media print {
+  .stat-form16 {
+    border: 0;
+    box-shadow: none;
+  }
+  .stat-form16 .table-wrap {
+    overflow: visible;
+  }
+  .stat-details > summary {
+    display: none;
+  }
+}

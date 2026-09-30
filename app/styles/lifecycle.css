@@ -1,0 +1,162 @@
+/* lifecycle module styles. Tokens only (app/styles/app.css :root); no hardcoded colors. */
+
+.stack-tight {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lc-net {
+  margin: 0;
+  font-size: var(--fs-metric);
+  font-weight: 600;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.lc-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.lc-details > summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-size: var(--fs-secondary);
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.lc-details[open] > summary {
+  margin-bottom: 8px;
+}
+.lc-history {
+  text-align: start;
+  max-width: 320px;
+}
+
+.lc-chip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lc-chip-wrap .chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-caption);
+}
+
+.lc-template-body {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-secondary);
+  line-height: 1.5;
+}
+
+.lc-asset-grid {
+  padding: 0 var(--gutter) var(--gutter);
+}
+.lc-asset-card {
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+
+/* Printable paper: letters and settlement statements ---------------------- */
+
+.lc-paper {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  padding: 24px 20px;
+  display: grid;
+  gap: 20px;
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
+  min-width: 0;
+}
+.lc-paper--preview {
+  max-width: none;
+  padding: 20px 16px;
+}
+.lc-paper-head {
+  display: grid;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+.lc-paper-head h1 {
+  margin: 0;
+  font-size: var(--fs-title);
+}
+.lc-paper-org {
+  margin: 0;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+}
+.lc-paper-subject {
+  margin: 0;
+  font-size: var(--fs-heading);
+}
+.lc-letter-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  font-size: var(--fs-body);
+}
+.lc-paper-foot {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.lc-statement {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-secondary);
+}
+.lc-statement th,
+.lc-statement td {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+  font-weight: 400;
+}
+.lc-statement td.cell-end,
+.lc-statement th.cell-end {
+  text-align: end;
+  white-space: nowrap;
+}
+.lc-statement-group th {
+  font-weight: 600;
+  background: var(--tint);
+}
+.lc-statement-total th,
+.lc-statement-total td {
+  font-weight: 600;
+}
+.lc-statement-net th,
+.lc-statement-net td {
+  font-weight: 700;
+  font-size: var(--fs-body);
+  border-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .lc-paper {
+    padding: 40px 48px;
+  }
+}
+
+@media print {
+  .lc-paper {
+    border: 0;
+    padding: 0;
+    max-width: none;
+  }
+  .lc-statement-group th {
+    background: none;
+  }
+}

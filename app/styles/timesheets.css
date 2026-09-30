@@ -1,0 +1,260 @@
+/* timesheets module styles. Tokens only (app/styles/app.css :root); no hardcoded colors. */
+
+/* Week navigation ---------------------------------------------------------- */
+.ts-week-nav {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.ts-week-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  min-width: 0;
+}
+.ts-week-title h2 {
+  margin: 0;
+  font-size: var(--fs-heading);
+}
+
+/* Weekly grid -------------------------------------------------------------- */
+.ts-grid-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  -webkit-overflow-scrolling: touch;
+}
+.ts-grid-wrap:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.ts-grid {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: var(--fs-secondary);
+  color: var(--text);
+}
+.ts-grid--compact {
+  min-width: 680px;
+}
+.ts-grid th,
+.ts-grid td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  text-align: center;
+}
+.ts-grid thead th {
+  background: var(--canvas);
+  font-weight: 600;
+}
+.ts-grid tfoot th,
+.ts-grid tfoot td {
+  background: var(--canvas);
+  border-bottom: 0;
+  font-weight: 600;
+}
+.ts-grid .ts-grid-task {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 200px;
+  max-width: 260px;
+  text-align: left;
+  background: var(--panel);
+  box-shadow: 1px 0 0 var(--border);
+}
+.ts-grid thead .ts-grid-task,
+.ts-grid tfoot .ts-grid-task {
+  background: var(--canvas);
+}
+.ts-grid-day {
+  min-width: 76px;
+}
+.ts-grid-day--off {
+  background: var(--neutral-tint);
+}
+.ts-grid thead .ts-grid-day--off {
+  background: var(--neutral-tint);
+}
+.ts-grid-day--error {
+  box-shadow: inset 0 -2px 0 var(--danger);
+}
+.ts-day-name,
+.ts-day-date {
+  display: block;
+}
+.ts-day-date {
+  font-size: var(--fs-caption);
+  font-weight: 400;
+  color: var(--muted);
+}
+.ts-day-badge {
+  display: block;
+  margin-top: 4px;
+}
+.ts-day-badge .badge {
+  max-width: 100%;
+  white-space: normal;
+  font-size: var(--fs-micro, 11px);
+  text-align: left;
+}
+.ts-grid-total {
+  min-width: 64px;
+  white-space: nowrap;
+}
+.ts-grid-action {
+  width: 44px;
+}
+.ts-grid-empty {
+  padding: 20px;
+  text-align: center;
+}
+.ts-row-code,
+.ts-row-name,
+.ts-row-meta {
+  display: block;
+}
+.ts-row-code {
+  font-size: var(--fs-caption);
+  color: var(--muted);
+  font-weight: 500;
+}
+.ts-row-name {
+  font-weight: 600;
+}
+.ts-row-meta {
+  font-size: var(--fs-caption);
+  color: var(--muted);
+  font-weight: 400;
+}
+.ts-note {
+  margin-top: 6px;
+  min-height: 36px;
+  font-size: var(--fs-caption);
+}
+.ts-hours {
+  width: 64px;
+  min-height: 40px;
+  padding: 6px;
+  text-align: center;
+}
+.ts-hours[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+/* Controls ----------------------------------------------------------------- */
+.ts-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+.ts-grid-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.ts-grid-actions > .muted {
+  margin-right: auto;
+}
+.ts-inline-form {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ts-error-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.ts-reminded {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.ts-card-note {
+  padding: 12px 20px 16px;
+  margin: 0;
+}
+
+/* Projects ----------------------------------------------------------------- */
+.ts-util {
+  display: grid;
+  gap: 4px;
+  min-width: 140px;
+  margin-top: 4px;
+}
+.ts-members {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.ts-members legend {
+  font-size: var(--fs-secondary);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.ts-members-list {
+  display: grid;
+  gap: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+}
+.ts-members-group {
+  display: grid;
+  gap: 8px;
+}
+.ts-members-dept {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Export ------------------------------------------------------------------- */
+.ts-export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .ts-week-nav {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ts-week-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .ts-week-nav > :last-child {
+    justify-self: end;
+  }
+  .ts-grid .ts-grid-task {
+    min-width: 150px;
+    max-width: 170px;
+  }
+  .ts-add-row > .button,
+  .ts-grid-actions > .button,
+  .ts-export > .button {
+    flex: 1 1 100%;
+  }
+}

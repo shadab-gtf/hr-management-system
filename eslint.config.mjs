@@ -5,9 +5,17 @@ import nextTypescript from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTypescript,
-  { rules: { "@typescript-eslint/no-explicit-any": "error" } },
   {
-    files: ["components/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
+    },
+  },
+  {
+    files: ["components/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -32,6 +40,7 @@ export default defineConfig([
   },
   globalIgnores([
     ".next/**",
+    ".next-*/**",
     "next-env.d.ts",
     "playwright-report/**",
     "test-results/**",

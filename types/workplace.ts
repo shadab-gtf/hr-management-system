@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ticketMessageSchema } from "@/types/requests";
 import {
   instantSchema,
   isoDateSchema,
@@ -18,6 +19,8 @@ export const documentSchema = z.object({
   uploadedAt: instantSchema,
   uploadedBy: z.string(),
   scanState: scanStateSchema,
+  /** In-app printable view for generated documents (issued letters, policies). */
+  href: z.string().optional(),
 });
 
 /* Helpdesk ----------------------------------------------------------------- */
@@ -48,6 +51,19 @@ export const ticketSchema = z.object({
   assignee: z.string().nullable(),
   lastMessage: z.string(),
 });
+export const ticketDetailSchema = ticketSchema.extend({
+  description: z.string(),
+  requester: personRefSchema.nullable(),
+  messages: z.array(ticketMessageSchema),
+  canReply: z.boolean(),
+  canClose: z.boolean(),
+  viewerIsHr: z.boolean(),
+});
+export const ticketReplySchema = z.object({
+  ticketId: z.string().min(1),
+  body: z.string().trim().min(2, "Write a reply.").max(2000),
+});
+
 export const ticketInputSchema = z.object({
   categoryId: z.string().min(1, "Choose a category."),
   subject: z
@@ -115,6 +131,10 @@ export const announcementSchema = z.object({
   publishedAt: instantSchema,
   author: z.string(),
   pinned: z.boolean(),
+  /** "Everyone" or a department name. */
+  audience: z.string(),
+  /** Scheduled items are visible to HR only until publishedAt passes. */
+  status: z.enum(["published", "scheduled"]),
 });
 
 export const notificationSchema = z.object({
@@ -151,6 +171,7 @@ export type TicketCategory = z.infer<typeof ticketCategorySchema>;
 export type TicketState = z.infer<typeof ticketStateSchema>;
 export type Ticket = z.infer<typeof ticketSchema>;
 export type TicketInput = z.infer<typeof ticketInputSchema>;
+export type TicketDetail = z.infer<typeof ticketDetailSchema>;
 export type ExpenseState = z.infer<typeof expenseStateSchema>;
 export type ExpenseCategory = z.infer<typeof expenseCategorySchema>;
 export type ExpenseClaim = z.infer<typeof expenseClaimSchema>;

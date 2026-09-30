@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { WorkspaceShell } from "@/components/sections/workspace-shell";
+import { WorkspaceShell } from "@/components/sections/foundation/workspace-shell";
 import { FoundationSkeleton } from "@/components/ui/skeleton";
 import { parseTheme } from "@/lib/utils/theme";
 

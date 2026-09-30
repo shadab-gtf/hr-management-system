@@ -16,6 +16,7 @@ Recorded: 2026-09-28. Exact installed versions and registry integrity hashes are
 | Zod | Runtime fixture/DTO validation | MIT |
 | Tailwind CSS | CSS pipeline and semantic utility tokens | MIT |
 | Google Sans | Local variable Latin font, weights 400–700 | SIL OFL 1.1 |
+| read-excel-file 9.3.10 (FE3) | Server-only .xlsx reading for attendance and salary imports | MIT |
 
 ## Google Sans
 

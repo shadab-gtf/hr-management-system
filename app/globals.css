@@ -25,6 +25,15 @@
   --danger: #af3030;
   --danger-bg: #fceeee;
   --skeleton: #e9edf1;
+  --brand-magenta: #e24397;
+  --brand-cyan: #2aaee4;
+  --brand-yellow: #fde93d;
+  --on-brand: #111827;
+  --secondary: #087aa4;
+  --on-secondary: #ffffff;
+  --overlay: #0b102080;
+  --shadow-raised: 0 18px 60px #0b10202e;
+  --shadow-bar: 0 -1px 0 #e4e7ec;
   --shadow: 0 2px 4px #15223403;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 140ms;
@@ -55,6 +64,15 @@
   --danger: #ffb0b0;
   --danger-bg: #412929;
   --skeleton: #2a3544;
+  --brand-magenta: #e24397;
+  --brand-cyan: #2aaee4;
+  --brand-yellow: #fde93d;
+  --on-brand: #111827;
+  --secondary: #38bdf8;
+  --on-secondary: #111827;
+  --overlay: #000000a6;
+  --shadow-raised: 0 18px 60px #00000073;
+  --shadow-bar: 0 -1px 0 #303b4b;
   --shadow: none;
 }
 @media (prefers-color-scheme: dark) {
@@ -83,11 +101,20 @@
     --danger: #ffb0b0;
     --danger-bg: #412929;
     --skeleton: #2a3544;
+    --brand-magenta: #e24397;
+    --brand-cyan: #2aaee4;
+    --brand-yellow: #fde93d;
+    --on-brand: #111827;
+    --secondary: #38bdf8;
+    --on-secondary: #111827;
+    --overlay: #000000a6;
+    --shadow-raised: 0 18px 60px #00000073;
+    --shadow-bar: 0 -1px 0 #303b4b;
     --shadow: none;
   }
 }
 @theme inline {
-  --font-sans: var(--font-google-sans), Arial, sans-serif;
+  --font-sans: var(--font-google-sans), var(--font-devanagari), Arial, sans-serif;
   --color-canvas: var(--canvas);
   --color-panel: var(--panel);
   --color-foreground: var(--text);
@@ -105,7 +132,7 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--text);
-  font-family: var(--font-google-sans), Arial, sans-serif;
+  font-family: var(--font-google-sans), var(--font-devanagari), Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -627,7 +654,7 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  color: #111827;
+  color: var(--on-brand);
 }
 .swatch > span:first-child {
   font-size: 20px;
@@ -639,13 +666,13 @@ h1 {
   letter-spacing: 0.5px;
 }
 .swatch--magenta {
-  background: #e24397;
+  background: var(--brand-magenta);
 }
 .swatch--cyan {
-  background: #2aaee4;
+  background: var(--brand-cyan);
 }
 .swatch--yellow {
-  background: #fde93d;
+  background: var(--brand-yellow);
 }
 .card-footnote {
   display: flex;
@@ -664,13 +691,13 @@ h1 {
   width: 6px;
   height: 14px;
   border-radius: 2px;
-  background: #e24397;
+  background: var(--brand-magenta);
 }
 .mini-palette i:nth-child(2) {
-  background: #2aaee4;
+  background: var(--brand-cyan);
 }
 .mini-palette i:nth-child(3) {
-  background: #fde93d;
+  background: var(--brand-yellow);
 }
 .type-mark {
   font-size: 24px;
@@ -1093,7 +1120,7 @@ td {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: #0b102075;
+  background: var(--overlay);
   animation: fade-in var(--duration-panel) var(--ease-out);
 }
 .dialog-content {
@@ -1110,7 +1137,7 @@ td {
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text);
-  box-shadow: 0 18px 70px #0003;
+  box-shadow: var(--shadow-raised);
   animation: panel-in var(--duration-panel) var(--ease-out);
 }
 .dialog-heading {
@@ -1160,7 +1187,7 @@ td {
   background: var(--panel);
   color: var(--text);
   border-color: var(--border);
-  font-family: var(--font-google-sans), Arial, sans-serif;
+  font-family: var(--font-google-sans), var(--font-devanagari), Arial, sans-serif;
 }
 [data-sonner-toast].gtf-toast [data-description] {
   color: var(--muted);

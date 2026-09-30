@@ -5,33 +5,48 @@ export function Card({
   children,
   className,
   id,
+  labelledBy,
+  as: Element = "section",
 }: {
   children: ReactNode;
   className?: string;
   id?: string;
+  labelledBy?: string;
+  as?: "section" | "article" | "div";
 }) {
   return (
-    <section id={id} className={cn("card", className)}>
+    <Element id={id} aria-labelledby={labelledBy} className={cn("card", className)}>
       {children}
-    </section>
+    </Element>
   );
 }
+
 export function CardHeader({
   title,
   description,
   action,
+  id,
 }: {
   title: string;
-  description?: string;
+  description?: ReactNode;
   action?: ReactNode;
+  id?: string;
 }) {
   return (
     <div className="card-header">
       <div>
-        <h2>{title}</h2>
+        <h2 id={id}>{title}</h2>
         {description && <p className="muted">{description}</p>}
       </div>
       {action}
     </div>
   );
+}
+
+export function CardBody({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("card-body", className)}>{children}</div>;
+}
+
+export function CardFooter({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("card-footer", className)}>{children}</div>;
 }

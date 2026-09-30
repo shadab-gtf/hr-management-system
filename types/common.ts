@@ -25,6 +25,8 @@ export const personRefSchema = z.object({
   name: z.string(),
   initials: z.string(),
   designation: z.string(),
+  /** Versioned, access-checked URL; null shows initials. */
+  photoUrl: z.string().nullable(),
 });
 
 export const listMetaSchema = z.object({

@@ -8,7 +8,7 @@ const browser = await chromium.launch({
   args: [`--remote-debugging-port=${port}`],
 });
 try {
-  const result = await lighthouse("http://127.0.0.1:3000", {
+  const result = await lighthouse(process.env.LIGHTHOUSE_URL ?? "http://127.0.0.1:3000", {
     port,
     output: "json",
     logLevel: "error",
