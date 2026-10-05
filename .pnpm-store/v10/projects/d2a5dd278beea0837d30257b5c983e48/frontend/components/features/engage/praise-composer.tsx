@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { givePraiseAction } from "@/lib/actions/engage";
@@ -25,7 +26,7 @@ export function PraiseComposer({ colleagues }: { colleagues: { id: string; name:
     setSelected([]);
     setLength(0);
   };
-  const { submit, pending, fieldError, formError } = useCommand(givePraiseAction, {
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(givePraiseAction, { draftKey: "praise.new",
     onSuccess: () => {
       sheet.hide();
       reset();
@@ -44,7 +45,8 @@ export function PraiseComposer({ colleagues }: { colleagues: { id: string; name:
         Give praise
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title="Give praise" description="Recognise colleagues for living our values. Praise appears on the wall and in the Engage feed." dismissible={!pending} size="lg">
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <fieldset className="ep-stack" aria-describedby={recipientsError ? "praise-recipients-error" : "praise-recipients-hint"}>
             <legend className="field-label">
               Who are you praising?<span className="required-mark" aria-hidden="true"> *</span>

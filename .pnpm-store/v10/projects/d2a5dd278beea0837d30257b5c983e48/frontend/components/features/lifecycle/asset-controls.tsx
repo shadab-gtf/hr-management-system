@@ -26,7 +26,7 @@ export function AssetFormSheet({ asset, today }: { asset?: Asset; today: string 
     </FormField>
   );
   return (
-    <FormSheet action={saveAssetAction} title={asset ? `Edit ${asset.tag}` : "Add asset"} trigger={asset ? "Edit" : "Add asset"} triggerVariant={asset ? "ghost" : "primary"} triggerSize={asset ? "sm" : "md"} icon={asset ? undefined : "add"} submitLabel={asset ? "Save changes" : "Add asset"}>
+    <FormSheet draftKey={asset ? `asset.edit:${asset.id}` : "asset.new"} action={saveAssetAction} title={asset ? `Edit ${asset.tag}` : "Add asset"} trigger={asset ? "Edit" : "Add asset"} triggerVariant={asset ? "ghost" : "primary"} triggerSize={asset ? "sm" : "md"} icon={asset ? undefined : "add"} submitLabel={asset ? "Save changes" : "Add asset"}>
       {(fieldError) => (
         <>
           {asset && <input type="hidden" name="id" value={asset.id} />}
@@ -60,7 +60,7 @@ export function AssetFormSheet({ asset, today }: { asset?: Asset; today: string 
 export function AssignAssetSheet({ asset, people, request, assets }: { asset?: Asset; people: Option[]; request?: AssetRequest; assets?: Option[] }) {
   const prefix = `as-${asset?.id ?? request?.id ?? "x"}`;
   return (
-    <FormSheet
+    <FormSheet draftKey={asset ? `asset.assign:${asset.id}` : `asset.fulfil:${request?.id ?? "new"}`}
       action={assignAssetAction}
       title={asset ? `Assign ${asset.tag}` : `Fulfil ${request?.reference ?? "request"}`}
       description={asset ? `${asset.make} ${asset.model}` : request ? `${request.requester.name} · ${request.reason}` : undefined}
@@ -96,7 +96,7 @@ export function AssignAssetSheet({ asset, people, request, assets }: { asset?: A
 export function ReturnAssetSheet({ asset }: { asset: Asset }) {
   const prefix = `ret-${asset.id}`;
   return (
-    <FormSheet action={returnAssetAction} title={`Check in ${asset.tag}`} description={`From ${asset.assignee?.name ?? "employee"}. Damaged items go to repair.`} trigger="Return" triggerVariant="secondary" triggerSize="sm" submitLabel="Record return">
+    <FormSheet draftKey={`asset.return:${asset.id}`} action={returnAssetAction} title={`Check in ${asset.tag}`} description={`From ${asset.assignee?.name ?? "employee"}. Damaged items go to repair.`} trigger="Return" triggerVariant="secondary" triggerSize="sm" submitLabel="Record return">
       {(fieldError) => (
         <>
           <input type="hidden" name="assetId" value={asset.id} />
@@ -121,7 +121,7 @@ export function AssetStatusSheet({ asset }: { asset: Asset }) {
   ].filter((option) => option.value !== asset.status);
   const prefix = `st-${asset.id}`;
   return (
-    <FormSheet action={setAssetStatusAction} title={`Change status · ${asset.tag}`} trigger="Status" triggerVariant="ghost" triggerSize="sm" submitLabel="Update status">
+    <FormSheet draftKey={`asset.status:${asset.id}`} action={setAssetStatusAction} title={`Change status · ${asset.tag}`} trigger="Status" triggerVariant="ghost" triggerSize="sm" submitLabel="Update status">
       {(fieldError) => (
         <>
           <input type="hidden" name="assetId" value={asset.id} />
@@ -139,7 +139,7 @@ export function AssetStatusSheet({ asset }: { asset: Asset }) {
 
 export function RejectAssetRequestSheet({ request }: { request: AssetRequest }) {
   return (
-    <FormSheet action={rejectAssetRequestAction} title={`Decline ${request.reference}`} trigger="Decline" triggerVariant="ghost" triggerSize="sm" submitLabel="Decline request" submitVariant="danger">
+    <FormSheet draftKey={`asset-request.decline:${request.id}`} action={rejectAssetRequestAction} title={`Decline ${request.reference}`} trigger="Decline" triggerVariant="ghost" triggerSize="sm" submitLabel="Decline request" submitVariant="danger">
       {(fieldError) => (
         <>
           <input type="hidden" name="requestId" value={request.id} />
@@ -158,7 +158,7 @@ export function AcknowledgeAssetButton({ assetId, tag }: { assetId: string; tag:
 
 export function RequestAssetSheet() {
   return (
-    <FormSheet action={requestAssetAction} title="Request an asset" description="HR reviews and assigns from stock." trigger="Request asset" icon="add" submitLabel="Send request">
+    <FormSheet draftKey={"asset.request"} action={requestAssetAction} title="Request an asset" description="HR reviews and assigns from stock." trigger="Request asset" icon="add" submitLabel="Send request">
       {(fieldError) => (
         <>
           <FormField id="ra-category" label="What do you need?" required error={fieldError("category")}>

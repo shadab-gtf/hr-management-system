@@ -101,6 +101,19 @@ export default async function seedCore(ctx: SeedContext): Promise<void> {
     }),
     skipDuplicates: true,
   });
+  // Demo access model (BE-003): the CEO is the super admin; the Engineering manager is an HR operator limited to
+  // Engineering, to exercise department-wise permissions.
+  await prisma.roleAssignment.createMany({
+    data: [
+      { employeeId: "emp_0001", role: "super_admin", reason: "Development seed: super admin" },
+      { employeeId: "emp_0013", role: "hr_operator", reason: "Development seed: Engineering HR" },
+    ],
+    skipDuplicates: true,
+  });
+  await prisma.roleScope.createMany({
+    data: [{ employeeId: "emp_0013", role: "hr_operator", departmentId: ctx.departmentId("Engineering") }],
+    skipDuplicates: true,
+  });
 
   // Development sign-in: every non-exited employee gets an account with DEV_SEED_PASSWORD (never in production).
   const devPassword = process.env.DEV_SEED_PASSWORD;

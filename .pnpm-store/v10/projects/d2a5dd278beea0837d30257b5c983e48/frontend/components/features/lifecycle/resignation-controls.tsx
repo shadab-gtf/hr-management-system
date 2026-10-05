@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, Segmented, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { ConfirmButton, FormSheet } from "@/components/features/admin/form-sheet";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { decideResignationAction, submitResignationAction, withdrawResignationAction } from "@/lib/actions/lifecycle";
 import { resignationReasonOptions } from "@/components/sections/lifecycle/labels";
@@ -13,12 +14,13 @@ import type { Resignation } from "@/types/lifecycle";
 
 export function ResignationForm({ today, policyLastDay, noticeDays }: { today: string; policyLastDay: string; noticeDays: number }) {
   const [lastDay, setLastDay] = useState(policyLastDay);
-  const { submit, pending, fieldError, formError } = useCommand(submitResignationAction);
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(submitResignationAction, { draftKey: "resignation.new" });
   const early = lastDay !== "" && lastDay < policyLastDay;
   const minDay = new Date(`${today}T00:00:00Z`);
   minDay.setUTCDate(minDay.getUTCDate() + 1);
   return (
-    <form onSubmit={submit} className="form" noValidate>
+    <form ref={formRef} onSubmit={submit} className="form" noValidate>
+      <DraftNotice draft={draft} />
       <FormField id="rs-reason" label="Primary reason" required error={fieldError("reason")}>
         <SelectInput id="rs-reason" name="reason" defaultValue="better_opportunity" options={resignationReasonOptions} aria-invalid={Boolean(fieldError("reason"))} aria-describedby={describedBy("rs-reason", fieldError("reason"))} />
       </FormField>
@@ -52,7 +54,7 @@ export function ResignationDecisionSheet({ resignation, asHr }: { resignation: R
   const [decision, setDecision] = useState<"accept" | "hold" | "reject">("accept");
   const prefix = `rd-${resignation.id}`;
   return (
-    <FormSheet
+    <FormSheet draftKey={`resignation.decide:${resignation.id}`}
       action={decideResignationAction}
       title={`${asHr ? "Decide" : "Review"}: ${resignation.person.name}`}
       description={asHr ? "Accepting sets notice status and opens the offboarding case." : "Your recommendation goes to HR for the final decision."}

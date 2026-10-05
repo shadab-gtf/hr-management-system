@@ -209,7 +209,7 @@ export function ReferralSheet({
   jobTitle: string;
 }) {
   return (
-    <FormSheet
+    <FormSheet draftKey={`referral:${jobId}`}
       action={referAction}
       title={`Refer for ${jobTitle}`}
       description="HR contacts them. You'll see a simple status here — never interview feedback or pay."

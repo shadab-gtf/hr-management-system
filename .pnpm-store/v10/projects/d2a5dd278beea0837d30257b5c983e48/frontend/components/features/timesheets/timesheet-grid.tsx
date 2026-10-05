@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { SelectInput } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { saveTimesheetAction } from "@/lib/actions/timesheets";
 import { cn } from "@/lib/utils/cn";
@@ -47,7 +48,7 @@ export function TimesheetGrid({ week, assignable }: { week: TimesheetWeek; assig
   const [nextKey, setNextKey] = useState(initial.length);
   const [projectId, setProjectId] = useState(assignable[0]?.id ?? "");
   const [task, setTask] = useState("");
-  const { submit, pending, state, fieldError } = useCommand(saveTimesheetAction);
+  const { formRef, draft, submit, pending, state, fieldError } = useCommand(saveTimesheetAction, { draftKey: `timesheet.week:${week.weekStart}` });
   const editable = week.editable;
 
   const parsed = rows.map((row) => row.hours.map((value) => parseQuarterHours(value)));
@@ -80,7 +81,8 @@ export function TimesheetGrid({ week, assignable }: { week: TimesheetWeek; assig
   const range = formatDateRange(week.weekStart, week.weekEnd);
 
   return (
-    <form onSubmit={submit} className="stack" noValidate>
+    <form ref={formRef} onSubmit={submit} className="stack" noValidate>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="weekStart" value={week.weekStart} />
       <input type="hidden" name="version" value={week.version} />
       <input type="hidden" name="rows" value={payload} />

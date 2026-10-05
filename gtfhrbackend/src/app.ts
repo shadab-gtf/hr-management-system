@@ -27,6 +27,9 @@ export function buildApp(prisma: PrismaClient = createPrismaClient()): Express {
     response.setHeader("Cache-Control", "no-store");
     if (request.path.endsWith("/content") || request.path.endsWith("/photo"))
       express.json({ limit: "14mb" })(request, response, next);
+    // Selfie + GPS attendance: one selfie of at most 2 MB, base64-encoded (docs/api/attendance-log.md).
+    else if (request.method === "POST" && request.path === "/api/v1/attendance/log")
+      express.json({ limit: "3500kb" })(request, response, next);
     else if (request.path.endsWith("/upload") && /\/(imports|compensation)\//.test(request.path))
       express.json({ limit: "8mb" })(request, response, next);
     else if (

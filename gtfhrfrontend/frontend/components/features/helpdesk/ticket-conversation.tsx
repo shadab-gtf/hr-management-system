@@ -6,15 +6,17 @@ import { AppIcon } from "@/components/ui/app-icon";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { TextArea } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { closeTicketAction, replyTicketAction } from "@/lib/actions/helpdesk";
 
 export function TicketReplyForm({ ticketId, placeholder }: { ticketId: string; placeholder: string }) {
   const form = useRef<HTMLFormElement>(null);
-  const { submit, pending, fieldError, formError } = useCommand(replyTicketAction, { onSuccess: () => form.current?.reset() });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(replyTicketAction, { draftKey: `helpdesk.reply:${ticketId}`, form, onSuccess: () => form.current?.reset() });
   const error = fieldError("body") ?? formError;
   return (
-    <form ref={form} onSubmit={submit} className="reply-form" noValidate>
+    <form ref={formRef} onSubmit={submit} className="reply-form" noValidate>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="ticketId" value={ticketId} />
       <label className="sr-only" htmlFor="reply-body">
         Reply

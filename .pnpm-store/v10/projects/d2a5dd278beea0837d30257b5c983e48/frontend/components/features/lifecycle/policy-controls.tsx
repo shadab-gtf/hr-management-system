@@ -14,7 +14,7 @@ export function PublishPolicySheet({ departments, today }: { departments: string
     </FormField>
   );
   return (
-    <FormSheet action={publishPolicyAction} title="Publish a policy version" description="Everyone in the audience is asked to read and acknowledge it by the due date." trigger="Publish policy" icon="add" submitLabel="Publish & request acknowledgement">
+    <FormSheet draftKey={"policy.publish"} action={publishPolicyAction} title="Publish a policy version" description="Everyone in the audience is asked to read and acknowledge it by the due date." trigger="Publish policy" icon="add" submitLabel="Publish & request acknowledgement">
       {(fieldError) => (
         <>
           {input("title", "Policy title", fieldError, { maxLength: 120 })}

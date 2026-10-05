@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, Segmented, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { requestLeaveAction } from "@/lib/actions/leave";
 import { eachDay, isWeekend } from "@/lib/utils/date";
@@ -27,7 +28,7 @@ export function LeaveRequestSheet({ types, balances, holidayDates, approver, tod
   const [start, setStart] = useState(today);
   const [end, setEnd] = useState(today);
   const [portion, setPortion] = useState("full");
-  const { submit, pending, fieldError, formError } = useCommand(requestLeaveAction, {
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(requestLeaveAction, { draftKey: "leave.apply",
     onSuccess: () => setOpen(false),
   });
 
@@ -60,7 +61,8 @@ export function LeaveRequestSheet({ types, balances, holidayDates, approver, tod
         description={approver ? `Goes to ${approver} for approval.` : "Routed to HR for approval."}
         dismissible={!pending}
       >
-        <form onSubmit={submit} className="form" id="leave-form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" id="leave-form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="leaveTypeId" label="Leave type" required error={fieldError("leaveTypeId")} hint={type?.description}>
             <SelectInput
               id="leaveTypeId"

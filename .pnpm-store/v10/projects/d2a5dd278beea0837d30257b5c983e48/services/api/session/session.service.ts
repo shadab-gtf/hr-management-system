@@ -6,11 +6,12 @@ import { ApiProblem, problem } from "@/lib/api/core/problem";
 import { callApi } from "@/lib/api/core/transport";
 import { actorFor, type MockActor } from "@/lib/mocks/handlers/shared";
 import { mockPersonaOptions, mockSession } from "@/lib/mocks/handlers/session";
-import { personaSchema, sessionSchema, type Capability, type Session } from "@/types/session";
+import { mockPersonaSchema } from "@/lib/mocks/seed/people";
+import { sessionSchema, type Capability, type Session } from "@/types/session";
 
 async function mockPersona() {
   const value = (await cookies()).get(apiConfig.sessionCookie)?.value;
-  const parsed = personaSchema.safeParse(value);
+  const parsed = mockPersonaSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 }
 
@@ -19,9 +20,19 @@ async function mockPersona() {
  * Supabase mode: the verified user, their employee record and database roles.
  */
 export async function mockActor(): Promise<MockActor> {
-  if (apiConfig.mode !== "mock") throw problem(500, "INVALID_DATA_SOURCE", "Demo handlers require explicit mock mode.");
+  if (apiConfig.mode !== "mock")
+    throw problem(
+      500,
+      "INVALID_DATA_SOURCE",
+      "Demo handlers require explicit mock mode.",
+    );
   const persona = await mockPersona();
-  if (!persona) throw problem(401, "UNAUTHENTICATED", "Your session has ended. Sign in again.");
+  if (!persona)
+    throw problem(
+      401,
+      "UNAUTHENTICATED",
+      "Your session has ended. Sign in again.",
+    );
   return actorFor(persona);
 }
 
@@ -43,8 +54,13 @@ export const getSession = cache(async (): Promise<Session | null> => {
   }
 });
 
-export function hasCapability(session: Session, ...capabilities: Capability[]): boolean {
-  return capabilities.some((capability) => session.capabilities.includes(capability));
+export function hasCapability(
+  session: Session,
+  ...capabilities: Capability[]
+): boolean {
+  return capabilities.some((capability) =>
+    session.capabilities.includes(capability),
+  );
 }
 
 /** Demo personas are offered only by the mock backend. */

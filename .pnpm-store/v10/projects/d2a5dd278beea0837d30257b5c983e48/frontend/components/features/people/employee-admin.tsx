@@ -25,7 +25,7 @@ export function AddEmployeeSheet({ options }: { options: HrFormOptions }) {
   const [type, setType] = useState<EmploymentType>("full_time");
   const fallback = options.probationDefaults[type];
   return (
-    <FormSheet
+    <FormSheet draftKey={"employee.new"}
       action={createEmployeeAction}
       title="Add employee"
       description="Creates the employee record and onboarding checklist, then sends a password-setup invite to their work email. Payroll sets compensation separately."
@@ -76,7 +76,7 @@ export function AddEmployeeSheet({ options }: { options: HrFormOptions }) {
 export function EditEmploymentSheet({ employee, options }: { employee: EmployeeDetail; options: HrFormOptions }) {
   const managers = options.managers.filter((m) => m.id !== employee.id);
   return (
-    <FormSheet
+    <FormSheet draftKey={`employee.edit:${employee.id}`}
       action={updateEmploymentAction}
       title="Edit job details"
       description="Recorded as an effective-dated change on the employment timeline. Salary changes go through Payroll."
@@ -125,7 +125,7 @@ export function EditEmploymentSheet({ employee, options }: { employee: EmployeeD
 
 export function StartExitSheet({ employee, today }: { employee: EmployeeDetail; today: string }) {
   return (
-    <FormSheet
+    <FormSheet draftKey={`employee.exit:${employee.id}`}
       action={startExitAction}
       title="Start exit"
       description={`Moves ${employee.name} to notice and opens the exit checklist. Records are retained; access is revoked on the last day.`}

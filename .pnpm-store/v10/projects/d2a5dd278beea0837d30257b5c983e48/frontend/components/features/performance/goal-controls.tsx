@@ -13,7 +13,7 @@ const err = (id: string, error: string | undefined, hint = false) => ({
 export function GoalSheet({ cycleId, goal, objectives, period, remaining }: { cycleId: string; goal?: PerfGoal; objectives: PerfObjective[]; period: { start: string; end: string }; remaining: number }) {
   const p = goal ? `goal-${goal.id}` : "goal-new";
   return (
-    <FormSheet
+    <FormSheet draftKey={goal ? `goal.edit:${goal.id}` : `goal.new:${cycleId}`}
       action={saveGoalAction}
       title={goal ? "Edit goal" : "Add a goal"}
       description={`Make it measurable. Weights across your goals must total 100% — ${goal ? remaining + goal.weight : remaining}% available.`}
@@ -65,7 +65,7 @@ export function SubmitGoalsButton({ cycleId, total, count }: { cycleId: string; 
 export function CheckInSheet({ goal }: { goal: PerfGoal }) {
   const p = `ci-${goal.id}`;
   return (
-    <FormSheet action={checkInAction} title="Goal check-in" description={goal.title} trigger="Check in" triggerVariant="secondary" triggerSize="sm" submitLabel="Save check-in">
+    <FormSheet draftKey={`goal.check-in:${goal.id}`} action={checkInAction} title="Goal check-in" description={goal.title} trigger="Check in" triggerVariant="secondary" triggerSize="sm" submitLabel="Save check-in">
       {(fieldError) => (
         <>
           <input type="hidden" name="goalId" value={goal.id} />
@@ -91,7 +91,7 @@ export function CheckInSheet({ goal }: { goal: PerfGoal }) {
 export function GoalDecision({ sheetId, version, name }: { sheetId: string; version: number; name: string }) {
   return (
     <span className="row-actions">
-      <FormSheet action={decideGoalsAction} title={`Approve ${name}'s goals`} description="Approved goals are locked for the cycle; check-ins continue." trigger="Approve goals" triggerSize="sm" submitLabel="Approve goals">
+      <FormSheet draftKey={`goals.approve:${sheetId}`} action={decideGoalsAction} title={`Approve ${name}'s goals`} description="Approved goals are locked for the cycle; check-ins continue." trigger="Approve goals" triggerSize="sm" submitLabel="Approve goals">
         {(fieldError) => (
           <>
             <input type="hidden" name="sheetId" value={sheetId} />
@@ -103,7 +103,7 @@ export function GoalDecision({ sheetId, version, name }: { sheetId: string; vers
           </>
         )}
       </FormSheet>
-      <FormSheet action={decideGoalsAction} title={`Send back ${name}'s goals`} description="They can edit and resubmit while goal setting is open." trigger="Send back" triggerVariant="ghost" triggerSize="sm" submitLabel="Send back" submitVariant="danger">
+      <FormSheet draftKey={`goals.send-back:${sheetId}`} action={decideGoalsAction} title={`Send back ${name}'s goals`} description="They can edit and resubmit while goal setting is open." trigger="Send back" triggerVariant="ghost" triggerSize="sm" submitLabel="Send back" submitVariant="danger">
         {(fieldError) => (
           <>
             <input type="hidden" name="sheetId" value={sheetId} />

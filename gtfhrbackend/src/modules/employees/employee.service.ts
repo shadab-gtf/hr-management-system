@@ -11,7 +11,9 @@ import { createTimeRepository } from "../time/time.repository.js";
 import { createPayrollRepository } from "../payroll/payroll.repository.js";
 import { provisionLeaveEntitlements } from "../time/time.service.js";
 import { AppError } from "../../core/errors/AppError.js";
-import type { AuthenticatedActor } from "../../core/security/actor.js";
+import { AuthorizationError } from "../../core/errors/AuthorizationError.js";
+import { requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { departmentInScope, employeeScopeWhere, hasAdministrativeReach, scopeOf } from "../../core/security/scope.js";
 import { fromIsoDate, toIsoDate, todayInOrgZone } from "../../utils/date.js";
 import { DIRECTORY_STATUS_FILTERS } from "../../utils/constants.js";
 import { toCursorPage } from "../../utils/pagination.js";
@@ -28,8 +30,16 @@ function initials(name: string): string {
     .join("");
 }
 
-function isHrOperator(actor: AuthenticatedActor): boolean {
-  return actor.roles.includes("hr_operator");
+/**
+ * Directory access (BE-003): every employee sees the active directory; HR-only fields, exited people and the status
+ * filter apply only to employees inside the caller's `employee.read` scope (HR operator or super admin).
+ */
+function hrReach(actor: AuthenticatedActor) {
+  const scope = scopeOf(actor, "employee.read");
+  return {
+    where: hasAdministrativeReach(actor, "employee.read") ? employeeScopeWhere(actor, "employee.read") : null,
+    covers: (departmentId: string) => scope === "all" || scope.includes(departmentId),
+  };
 }
 
 /** Directory card. Employment status and join date are HR-only fields. */
@@ -53,35 +63,45 @@ export function createEmployeeService(prisma: PrismaClient) {
 
   return {
     async listDirectory(actor: AuthenticatedActor, query: ListEmployeesQuery, requestId: string) {
-      const isHr = isHrOperator(actor);
+      requireCapability(actor, "directory.read");
+      const hr = hrReach(actor);
       const { rows, total } = await repository.listDirectory(
         {
           q: query.q,
           department: query.department,
           location: query.location,
-          status: isHr ? query.status : undefined,
-          includeExited: isHr,
+          status: hr.where ? query.status : undefined,
+          hrScope: hr.where,
         },
         { cursor: query.cursor, limit: query.limit },
       );
       const page = toCursorPage(rows, query.limit);
       return {
-        data: page.items.map((employee) => toEmployeeDto(employee, isHr)),
+        data: page.items.map((employee) => toEmployeeDto(employee, hr.covers(employee.departmentId))),
         meta: { requestId, hasMore: page.hasMore, total, nextCursor: page.nextCursor },
       };
     },
 
     async facets(actor: AuthenticatedActor) {
+      requireCapability(actor, "directory.read");
       const [departments, locations] = await Promise.all([
         repository.activeDepartmentNames(),
         repository.activeLocationNames(),
       ]);
-      return { departments, locations, statuses: isHrOperator(actor) ? [...DIRECTORY_STATUS_FILTERS] : [] };
+      return {
+        departments,
+        locations,
+        statuses: hasAdministrativeReach(actor, "employee.read") ? [...DIRECTORY_STATUS_FILTERS] : [],
+      };
     },
 
-    async formOptions() {
-      const [departments, locations, managers, probationSetting] = await Promise.all([
-        repository.activeDepartmentNames(),
+    /** Departments are limited to the caller's `employee.create` scope; managers may come from any department. */
+    async formOptions(actor: AuthenticatedActor) {
+      requireCapability(actor, "employee.create");
+      if (!hasAdministrativeReach(actor, "employee.create"))
+        throw new AuthorizationError("You don't have access to this.");
+      const [departmentRows, locations, managers, probationSetting] = await Promise.all([
+        repository.activeDepartments(),
         repository.activeLocationNames(),
         repository.activeEmployeesForPicker(),
         repository.organizationSetting("probation_defaults"),
@@ -91,7 +111,9 @@ export function createEmployeeService(prisma: PrismaClient) {
         throw new AppError(503, "CONFIGURATION_UNAVAILABLE", "HR probation defaults are not configured.");
 
       return {
-        departments,
+        departments: departmentRows
+          .filter(({ id }) => departmentInScope(actor, "employee.create", id))
+          .map(({ name }) => name),
         locations,
         managers: managers.map((manager) => ({ ...manager, initials: initials(manager.name), photoUrl: null })),
         today: todayInOrgZone(),
@@ -101,6 +123,7 @@ export function createEmployeeService(prisma: PrismaClient) {
 
     /** Creates the employee, base role and audit row in one transaction. */
     create(actor: AuthenticatedActor, input: CreateEmployeeInput, requestId: string, key?: string) {
+      requireCapability(actor, "employee.create");
       return idempotent(prisma, { actorId: actor.employeeId, key, command: "employee.create" }, async (tx) => {
         const employees = createEmployeeRepository(tx);
         const [department, location, manager] = await Promise.all([
@@ -110,6 +133,12 @@ export function createEmployeeService(prisma: PrismaClient) {
         ]);
         if (!department || !location || !manager)
           throw new AppError(422, "INVALID_REFERENCE", "Select an active department, location, and manager.");
+        // A department-scoped HR operator adds people only to the departments they manage (BE-003).
+        if (!departmentInScope(actor, "employee.create", department.id))
+          throw new AuthorizationError(
+            "Adding employees to this department needs wider access.",
+            "ORG_WIDE_ACCESS_REQUIRED",
+          );
 
         const id = await nextEmployeeId(tx);
         const employee = await employees.create({
@@ -124,7 +153,7 @@ export function createEmployeeService(prisma: PrismaClient) {
           joinedOn: fromIsoDate(input.joinedOn),
           employmentType: input.type,
         });
-        await employees.grantRole(employee.id, "employee", "Initial account role");
+        // Deny by default (BE-003): a new employee has no access until an administrator grants a role.
         const workspace = createWorkspaceRepository(tx);
         const defaults = probationDefaultsSchema.parse(await employees.organizationSetting("probation_defaults"));
         const months = typeof input.probationMonths === "number" ? input.probationMonths : defaults[input.type];

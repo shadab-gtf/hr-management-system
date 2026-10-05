@@ -57,12 +57,16 @@ export const CAPABILITIES = [
   "candidate.interview",
   "survey.manage",
   "report.build",
+  "access.manage",
+  "audit.read",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
 
 /** Role → capability grants. Identical to the frontend mock's grants so both enforce the same rules. */
 export const roleCapabilities: Record<ApiRole, readonly Capability[]> = {
+  /** Every capability, organization-wide. Grant to as few people as possible; maker ≠ checker still applies. */
+  super_admin: CAPABILITIES,
   employee: [
     "directory.read",
     "profile.read.self",
@@ -117,6 +121,8 @@ export const roleCapabilities: Record<ApiRole, readonly Capability[]> = {
     "recruitment.manage",
     "survey.manage",
     "report.build",
+    "access.manage",
+    "audit.read",
   ],
   payroll_operator: [
     "payroll.prepare",

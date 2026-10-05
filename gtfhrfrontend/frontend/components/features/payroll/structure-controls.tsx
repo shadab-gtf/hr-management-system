@@ -28,7 +28,7 @@ const yesNo = [
 export function ProposeTemplateSheet({ template }: { template: TemplateTerms }) {
   const p = `tpl-${template.id}`;
   return (
-    <FormSheet
+    <FormSheet draftKey={`structure.template:${template.id}`}
       action={proposeTemplateAction}
       title={`Propose change · ${template.name}`}
       description="Finance approves before the new version is published. Approved payroll runs stay frozen; open and future runs use the new version."
@@ -77,7 +77,7 @@ export function ProposeTemplateSheet({ template }: { template: TemplateTerms }) 
 export function AssignmentSheet({ groupKey, label, current, templates }: { groupKey: string; label: string; current: string; templates: { id: string; name: string }[] }) {
   const p = `asg-${groupKey.replace(/\W/g, "")}`;
   return (
-    <FormSheet action={proposeAssignmentAction} title={`Assign template · ${label}`} description="Needs Finance approval before payroll uses it." trigger="Change" triggerVariant="ghost" triggerSize="sm" submitLabel="Send for approval">
+    <FormSheet draftKey={`structure.assign:${groupKey}`} action={proposeAssignmentAction} title={`Assign template · ${label}`} description="Needs Finance approval before payroll uses it." trigger="Change" triggerVariant="ghost" triggerSize="sm" submitLabel="Send for approval">
       {(fieldError) => (
         <>
           <input type="hidden" name="groupKey" value={groupKey} />
@@ -101,7 +101,7 @@ export function StructureDecisionSheet({ changeId, reference, decision }: { chan
     withdraw: { trigger: "Withdraw", title: `Withdraw ${reference}`, submit: "Withdraw change", variant: "danger" as const },
   }[decision];
   return (
-    <FormSheet
+    <FormSheet draftKey={`structure.decide:${changeId}:${decision}`}
       action={decideStructureAction}
       title={copy.title}
       description={decision === "approve" ? "The new version applies to open and future payroll runs." : undefined}

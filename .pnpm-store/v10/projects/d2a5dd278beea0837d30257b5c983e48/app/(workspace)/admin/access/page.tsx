@@ -11,14 +11,23 @@ export const metadata: Metadata = { title: "Access & accounts" };
 
 async function Data() {
   const session = await getSession();
-  if (!session || !hasCapability(session, "employee.update")) return <AccessDenied what="access administration" />;
+  if (!session || !hasCapability(session, "access.manage"))
+    return <AccessDenied what="access administration" />;
   const overview = await getAccessOverview();
-  return <AccessAdminSection overview={overview} today={todayInZone(session.organization.timezone)} />;
+  return (
+    <AccessAdminSection
+      overview={overview}
+      today={todayInZone(session.organization.timezone)}
+      canReadAudit={hasCapability(session, "audit.read")}
+    />
+  );
 }
 
 export default function Page() {
   return (
-    <Suspense fallback={<PageSkeleton label="Loading accounts" variant="table" />}>
+    <Suspense
+      fallback={<PageSkeleton label="Loading accounts" variant="table" />}
+    >
       <Data />
     </Suspense>
   );

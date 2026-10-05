@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { acknowledgeAction, saveManagerReviewAction, saveSelfReviewAction } from "@/lib/actions/performance";
 import {
@@ -141,9 +142,10 @@ function FormAlert({ state }: { state: ReturnType<typeof useCommand>["state"] })
 
 export function SelfReviewForm({ reviewId, version, goals, competencies, self, scale, goalWeight }: { reviewId: string; version: number; goals: PerfGoal[]; competencies: PerfCompetency[]; self: PerfSelfPart; scale: RatingLevel[]; goalWeight: number }) {
   const [ratings, setRatings] = useState<Ratings>(() => initialRatings(self));
-  const { submit, pending, fieldError, state } = useCommand(saveSelfReviewAction);
+  const { formRef, draft, submit, pending, fieldError, state } = useCommand(saveSelfReviewAction, { draftKey: `review.self:${reviewId}` });
   return (
-    <form onSubmit={submit} className="form" noValidate aria-label="Self review">
+    <form ref={formRef} onSubmit={submit} className="form" noValidate aria-label="Self review">
+      <DraftNotice draft={draft} />
       <input type="hidden" name="reviewId" value={reviewId} />
       <input type="hidden" name="version" value={version} />
       <RatingFields prefix="self" goals={goals} competencies={competencies} part={self} scale={scale} fieldError={fieldError} onRate={(id, rating) => setRatings((r) => ({ ...r, [id]: rating }))} />
@@ -190,9 +192,10 @@ export function ManagerReviewForm({
   goalWeight: number;
 }) {
   const [ratings, setRatings] = useState<Ratings>(() => initialRatings(manager));
-  const { submit, pending, fieldError, state } = useCommand(saveManagerReviewAction);
+  const { formRef, draft, submit, pending, fieldError, state } = useCommand(saveManagerReviewAction, { draftKey: `review.manager:${reviewId}` });
   return (
-    <form onSubmit={submit} className="form" noValidate aria-label={`Manager review for ${name}`}>
+    <form ref={formRef} onSubmit={submit} className="form" noValidate aria-label={`Manager review for ${name}`}>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="reviewId" value={reviewId} />
       <input type="hidden" name="version" value={version} />
       <RatingFields prefix="mgr" goals={goals} competencies={competencies} part={manager} scale={scale} fieldError={fieldError} selfPart={self} onRate={(id, rating) => setRatings((r) => ({ ...r, [id]: rating }))} />
@@ -234,9 +237,10 @@ export function ManagerReviewForm({
 }
 
 export function AcknowledgeForm({ reviewId }: { reviewId: string }) {
-  const { submit, pending, fieldError, formError } = useCommand(acknowledgeAction);
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(acknowledgeAction, { draftKey: `review.acknowledge:${reviewId}` });
   return (
-    <form onSubmit={submit} className="form" noValidate aria-label="Acknowledge review">
+    <form ref={formRef} onSubmit={submit} className="form" noValidate aria-label="Acknowledge review">
+      <DraftNotice draft={draft} />
       <input type="hidden" name="reviewId" value={reviewId} />
       <FormField id="ack-comment" label="Your comment (optional)" hint="Visible to your reviewer and HR." error={fieldError("comment")}>
         <TextArea id="ack-comment" name="comment" rows={2} maxLength={500} {...err("ack-comment", fieldError("comment"), true)} />

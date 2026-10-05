@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { saveProjectAction } from "@/lib/actions/timesheets";
@@ -25,7 +26,7 @@ const billableOptions = [
 /** Create or edit one project (code, budget, dates, members, tasks). */
 export function ProjectSheet({ project, people, today }: { project?: Project; people: ProjectMemberOption[]; today: string }) {
   const sheet = useDisclosure();
-  const { submit, pending, state } = useCommand(saveProjectAction, { onSuccess: sheet.hide });
+  const { formRef, draft, submit, pending, state } = useCommand(saveProjectAction, { draftKey: project ? `project.edit:${project.id}` : "project.new", onSuccess: sheet.hide });
   const errors = state.status === "error" ? (state.fieldErrors ?? {}) : {};
   const error = (name: string) => errors[name] ?? Object.entries(errors).find(([key]) => key.startsWith(`${name}.`))?.[1];
   const prefix = project ? `ts-prj-${project.id}` : "ts-prj-new";
@@ -58,7 +59,8 @@ export function ProjectSheet({ project, people, today }: { project?: Project; pe
         </Button>
       )}
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title={project ? `Edit ${project.code}` : "New project"} description="Members can log hours against its tasks while it is active." size="lg" dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           {project && (
             <>
               <input type="hidden" name="id" value={project.id} />

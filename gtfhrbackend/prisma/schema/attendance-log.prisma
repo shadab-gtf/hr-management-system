@@ -1,0 +1,69 @@
+// Selfie + live GPS attendance (src/modules/attendance-log, docs/api/attendance-log.md).
+
+enum AttLogEventType {
+  sign_in
+  sign_out
+
+  @@map("att_log_event_type")
+}
+
+enum AttLogStatus {
+  success
+  failed
+
+  @@map("att_log_status")
+}
+
+/// Every Sign In / Sign Out attempt, failed ones included. Append-only: UPDATE, DELETE and TRUNCATE are rejected by
+/// a trigger (prisma/sql/25-attendance-log.sql). Selfie bytes live in stored_files and expire by retention; the row
+/// keeps the file id.
+model AttLogEntry {
+  id                String          @id @db.VarChar(40)
+  employeeId        String          @map("employee_id") @db.VarChar(32)
+  employee          Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  eventType         AttLogEventType @map("event_type")
+  /// Organization-zone date the attempt counts for.
+  businessDate      String          @map("business_date") @db.VarChar(10)
+  /// Null when the submitted value was outside the valid range.
+  latitude          Decimal?        @db.Decimal(10, 7)
+  longitude         Decimal?        @db.Decimal(10, 7)
+  accuracyM         Decimal?        @map("accuracy_m") @db.Decimal(9, 2)
+  selfieFileId      String?         @map("selfie_file_id") @db.VarChar(40)
+  serverTimestamp   DateTime        @default(now()) @map("server_timestamp") @db.Timestamptz(6)
+  clientTimestamp   DateTime        @map("client_timestamp") @db.Timestamptz(6)
+  positionTimestamp DateTime        @map("position_timestamp") @db.Timestamptz(6)
+  deviceId          String          @map("device_id") @db.VarChar(64)
+  status            AttLogStatus
+  /// Problem code of a failed attempt.
+  failureReason     String?         @map("failure_reason") @db.VarChar(60)
+  /// offline, new_device, mock_suspected, low_accuracy, outside_geofence, remote.
+  flags             String[]        @default([])
+  offline           Boolean         @default(false)
+  /// Server geofence verdict and the nearest configured site.
+  geofenceStatus    String?         @map("geofence_status") @db.VarChar(20)
+  siteId            String?         @map("site_id") @db.VarChar(60)
+  siteName          String?         @map("site_name") @db.VarChar(120)
+  /// Browser mock-location heuristics as submitted (booleans and a count only).
+  clientSignals     Json            @map("client_signals")
+  /// Keyed hash of the caller's IP address; the address itself is never stored.
+  ipHash            String?         @map("ip_hash") @db.VarChar(64)
+  /// Attendance reference (AT-…) of a successful attempt.
+  reference         String?         @db.VarChar(50)
+  requestId         String?         @map("request_id") @db.VarChar(100)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([employeeId, createdAt])
+  @@index([employeeId, deviceId])
+  @@index([businessDate, status])
+  @@map("att_log_entries")
+}
+
+/// The first device an employee signed in from (device binding). One registered device per employee.
+model AttLogDevice {
+  employeeId   String   @id @map("employee_id") @db.VarChar(32)
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  deviceId     String   @map("device_id") @db.VarChar(64)
+  registeredAt DateTime @default(now()) @map("registered_at") @db.Timestamptz(6)
+
+  @@map("att_log_devices")
+}

@@ -25,6 +25,8 @@ export default tseslint.config(
       "@typescript-eslint/no-floating-promises": "off",
       // typed helpers like dataOf<T>() deliberately take a type argument used once
       "@typescript-eslint/no-unnecessary-type-parameters": "off",
+      // assert.throws(() => fn()) is the idiomatic shape for expected failures
+      "@typescript-eslint/no-confusing-void-expression": "off",
     },
   },
   { files: ["*.js"], ...tseslint.configs.disableTypeChecked },

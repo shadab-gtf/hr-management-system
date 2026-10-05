@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { regularizeAction } from "@/lib/actions/attendance";
 import { formatDate } from "@/lib/utils/format";
@@ -13,7 +14,7 @@ import type { AttendanceDay } from "@/types/attendance";
 /** Proposes corrected times. Raw punches are never overwritten. */
 export function RegularizationButton({ day, defaultOpen = false }: { day: AttendanceDay; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
-  const { submit, pending, fieldError, formError } = useCommand(regularizeAction, { onSuccess: () => setOpen(false) });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(regularizeAction, { draftKey: `attendance.regularize:${day.date}`, onSuccess: () => setOpen(false) });
   return (
     <>
       <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
@@ -26,7 +27,8 @@ export function RegularizationButton({ day, defaultOpen = false }: { day: Attend
         description={`${formatDate(day.date, "long")} · ${day.exception ?? "Review"}`}
         dismissible={!pending}
       >
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <input type="hidden" name="date" value={day.date} />
           <div className="form-summary">
             <div className="form-summary-row">

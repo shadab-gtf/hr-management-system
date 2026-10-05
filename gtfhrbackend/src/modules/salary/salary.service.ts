@@ -4,6 +4,7 @@ import { newId, nextReference } from "../../core/database/ids.js";
 import { AppError } from "../../core/errors/AppError.js";
 import { assertVersion } from "../../core/http/request-context.js";
 import { requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { assertEmployeeInScope } from "../../core/security/scope.js";
 import { inr, paiseFromAmount } from "../../utils/money.js";
 import { todayInOrgZone, toIsoDate } from "../../utils/date.js";
 import { recordAuditEvent } from "../audit-logs/audit.repository.js";
@@ -339,6 +340,8 @@ export function createSalaryService(prisma: PrismaClient) {
         await repo.lock(`loan:${id}`);
         const loan = await repo.loan(id);
         if (!loan) throw new AppError(404, "NOT_FOUND", "Loan request not found.");
+        // Administrative decision on another employee's loan: limited to the approver's departments (BE-003).
+        await assertEmployeeInScope(tx, actor, "loan.approve", loan.employeeId);
         assertVersion(loan.version, expected);
         if (loan.employeeId === actor.employeeId)
           throw new AppError(403, "SELF_APPROVAL", "You cannot approve your own loan.");

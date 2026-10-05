@@ -1,46 +1,49 @@
 model ReportSaved {
-  id String @id @db.VarChar(40)
-  name String @db.VarChar(80)
-  description String @db.VarChar(240)
-  spec Json
-  visibility String @default("private") @db.VarChar(16)
+  id          String    @id @db.VarChar(40)
+  name        String    @db.VarChar(80)
+  description String    @db.VarChar(240)
+  spec        Json
+  visibility  String    @default("private") @db.VarChar(16)
   sharedRoles String[]
-  ownerId String @db.VarChar(32)
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @db.Timestamptz(6)
-  version Int @default(1)
-  schedule Json?
-  nextRunAt DateTime? @db.Timestamptz(6)
-  lastRunAt DateTime? @db.Timestamptz(6)
+  ownerId     String    @db.VarChar(32)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+  version     Int       @default(1)
+  schedule    Json?
+  nextRunAt   DateTime? @db.Timestamptz(6)
+  lastRunAt   DateTime? @db.Timestamptz(6)
+
   @@index([ownerId])
   @@index([nextRunAt])
   @@map("report_saved")
 }
 
 model ReportExport {
-  id String @id @db.VarChar(40)
-  actorId String @db.VarChar(32)
-  report String @db.VarChar(200)
-  source String @db.VarChar(16)
-  format String @db.VarChar(4)
+  id       String   @id @db.VarChar(40)
+  actorId  String   @db.VarChar(32)
+  report   String   @db.VarChar(200)
+  source   String   @db.VarChar(16)
+  format   String   @db.VarChar(4)
   rowCount Int
-  filters String @db.VarChar(2000)
-  at DateTime @default(now()) @db.Timestamptz(6)
+  filters  String   @db.VarChar(2000)
+  at       DateTime @default(now()) @db.Timestamptz(6)
+
   @@index([at(sort: Desc)])
   @@map("report_exports")
 }
 
 model ReportDelivery {
-  id String @id @db.VarChar(40)
-  savedReportId String @db.VarChar(40)
-  reportName String @db.VarChar(80)
-  ownerId String @db.VarChar(32)
-  recipientIds String[]
-  rowCount Int
-  format String @db.VarChar(4)
-  trigger String @db.VarChar(16)
-  artifact Json
-  at DateTime @default(now()) @db.Timestamptz(6)
+  id            String   @id @db.VarChar(40)
+  savedReportId String   @db.VarChar(40)
+  reportName    String   @db.VarChar(80)
+  ownerId       String   @db.VarChar(32)
+  recipientIds  String[]
+  rowCount      Int
+  format        String   @db.VarChar(4)
+  trigger       String   @db.VarChar(16)
+  artifact      Json
+  at            DateTime @default(now()) @db.Timestamptz(6)
+
   @@index([ownerId, at(sort: Desc)])
   @@map("report_deliveries")
 }

@@ -19,7 +19,9 @@ export function createIdentityRepository(db: TransactionClient) {
         include: {
           account: true,
           credential: { select: { employeeId: true } },
-          roleAssignments: true,
+          roleAssignments: {
+            include: { departments: { include: { department: { select: { id: true, name: true } } } } },
+          },
           department: true,
         },
         orderBy: { name: "asc" },
@@ -28,7 +30,11 @@ export function createIdentityRepository(db: TransactionClient) {
     account(employeeId: string) {
       return db.employee.findUnique({
         where: { id: employeeId },
-        include: { account: true, roleAssignments: true, credential: { select: { employeeId: true } } },
+        include: {
+          account: true,
+          roleAssignments: { include: { departments: { select: { departmentId: true } } } },
+          credential: { select: { employeeId: true } },
+        },
       });
     },
     findEmail(workEmail: string) {
@@ -72,19 +78,54 @@ export function createIdentityRepository(db: TransactionClient) {
         update: { disabledAt: disabled ? new Date() : null },
       });
     },
-    grantRole(employeeId: string, role: Role, grantedBy: string, reason: string, expiresAt: Date | null) {
-      return db.roleAssignment.upsert({
+    /** Creates or replaces a grant, including its department scope (empty = organization-wide). */
+    async grantRole(
+      employeeId: string,
+      role: Role,
+      grantedBy: string,
+      reason: string,
+      expiresAt: Date | null,
+      departmentIds: readonly string[],
+    ) {
+      await db.roleAssignment.upsert({
         where: { employeeId_role: { employeeId, role } },
         create: { employeeId, role, grantedBy, reason, expiresAt },
         update: { grantedBy, reason, expiresAt, grantedAt: new Date() },
+      });
+      await db.roleScope.deleteMany({ where: { employeeId, role } });
+      if (departmentIds.length > 0)
+        await db.roleScope.createMany({
+          data: departmentIds.map((departmentId) => ({ employeeId, role, departmentId })),
+        });
+    },
+    activeDepartments() {
+      return db.department.findMany({
+        where: { archivedAt: null },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      });
+    },
+    /** Active (non-exited, enabled, unexpired) super admins other than `excludingEmployeeId`. */
+    activeSuperAdminCount(excludingEmployeeId?: string) {
+      return db.employee.count({
+        where: {
+          ...(excludingEmployeeId ? { id: { not: excludingEmployeeId } } : {}),
+          status: { not: "exited" },
+          account: { disabledAt: null },
+          roleAssignments: {
+            some: { role: "super_admin", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+          },
+        },
       });
     },
     revokeRole(employeeId: string, role: Role) {
       return db.roleAssignment.deleteMany({ where: { employeeId, role } });
     },
-    activeHrCount() {
+    /** Active HR operators other than `excludingEmployeeId`. */
+    activeHrCount(excludingEmployeeId?: string) {
       return db.employee.count({
         where: {
+          ...(excludingEmployeeId ? { id: { not: excludingEmployeeId } } : {}),
           status: { not: "exited" },
           account: { disabledAt: null },
           roleAssignments: {

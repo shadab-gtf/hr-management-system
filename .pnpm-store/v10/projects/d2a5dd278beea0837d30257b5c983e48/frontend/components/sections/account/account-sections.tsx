@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert, KeyValueList, ListRow } from "@/components/ui/display";
 import { PageHeader } from "@/components/ui/page-header";
 import { signOutAction } from "@/lib/actions/session";
+import { SignOutForm } from "@/components/features/drafts/sign-out-form";
 import { humanize } from "@/lib/utils/format";
 import type { NavGroup } from "@/lib/navigation";
 import type { Session } from "@/types/session";
@@ -19,12 +20,12 @@ import type { ChannelPreferences } from "@/types/notifications";
 
 function SignOut({ label = "Sign out" }: { label?: string }) {
   return (
-    <form action={signOutAction}>
+    <SignOutForm action={signOutAction}>
       <button type="submit" className="button button--secondary sign-out">
         <AppIcon name="logout" size={20} />
         {label}
       </button>
-    </form>
+    </SignOutForm>
   );
 }
 

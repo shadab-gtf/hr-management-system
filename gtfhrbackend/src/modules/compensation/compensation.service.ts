@@ -4,6 +4,9 @@ import { idempotent } from "../../core/database/idempotency.js";
 import { newId, nextReference } from "../../core/database/ids.js";
 import { AppError } from "../../core/errors/AppError.js";
 import { can, requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import type { Capability } from "../../core/security/capabilities.js";
+import { departmentInScope, employeeIdsInScope, isOrgWide, requireOrgWide } from "../../core/security/scope.js";
+import { AuthorizationError } from "../../core/errors/AuthorizationError.js";
 import { personRef } from "../../core/people/person-ref.js";
 import { todayInOrgZone, fromIsoDate } from "../../utils/date.js";
 import { inr, paiseFromAmount } from "../../utils/money.js";
@@ -25,8 +28,54 @@ import { json, loadCalculationData, requirePayroll } from "../payroll/payroll.se
 import { readCompensationFile } from "./compensation-file.js";
 import { ImportFileError } from "../attendance-import/attendance-file.js";
 
+const PAYROLL_VIEW: readonly Capability[] = ["payroll.prepare", "payroll.approve", "compensation.manage"];
+type ImportPreview = Pick<CompensationBatch, "rows">;
+type EmployeeRef = { id: string; code: string; departmentId: string };
+
+/**
+ * Salary templates and group assignments are organization-wide policy (BE-003): reading or changing them needs an
+ * organization-wide payroll grant, not a department-scoped one.
+ */
+function requireOrgWidePayroll(actor: AuthenticatedActor): void {
+  requirePayroll(actor);
+  if (!isOrgWide(actor, "payroll.prepare") && !isOrgWide(actor, "payroll.approve"))
+    throw new AuthorizationError("This action needs organization-wide access.", "ORG_WIDE_ACCESS_REQUIRED");
+}
+
+/**
+ * Departments of the employees an import batch resolved at preview time. Rows the uploader could not resolve (unknown
+ * codes, or employees outside a scoped uploader's departments) carry no employee data and reference nobody.
+ */
+function batchDepartments(preview: ImportPreview, employees: readonly EmployeeRef[]): string[] {
+  const byCode = new Map(employees.map((employee) => [employee.code, employee.departmentId]));
+  return [
+    ...new Set(preview.rows.flatMap((row) => (row.employeeName === null ? [] : (byCode.get(row.employeeCode) ?? [])))),
+  ];
+}
+
+/** True when every employee in the batch is inside the department scope of one of the capabilities. */
+function batchInScope(
+  actor: AuthenticatedActor,
+  capabilities: readonly Capability[],
+  preview: ImportPreview,
+  employees: readonly EmployeeRef[],
+): boolean {
+  if (capabilities.some((capability) => isOrgWide(actor, capability))) return true;
+  const departments = batchDepartments(preview, employees);
+  return (
+    departments.length > 0 &&
+    departments.every((departmentId) =>
+      capabilities.some((capability) => departmentInScope(actor, capability, departmentId)),
+    )
+  );
+}
+
 export function createCompensationService(prisma: PrismaClient) {
   const repository = createCompensationRepository(prisma);
+  /** Imports are visible to their uploader and to payroll staff whose scope covers every employee in them. */
+  const visible = (actor: AuthenticatedActor, row: PayImport, employees: readonly EmployeeRef[]) =>
+    row.uploadedBy === actor.employeeId ||
+    batchInScope(actor, PAYROLL_VIEW, compensationBatchSchema.pick({ rows: true }).parse(row.preview), employees);
   const batchDto = async (actor: AuthenticatedActor, row: PayImport): Promise<CompensationBatch> => {
     const employees = await repository.employees();
     const preview = compensationBatchSchema.pick({ columns: true, rows: true, totals: true }).parse(row.preview);
@@ -47,7 +96,11 @@ export function createCompensationService(prisma: PrismaClient) {
       decisionNote: row.decisionNote,
       can: {
         submit: can(actor, "compensation.manage") && own && row.state === "previewed" && preview.totals.errors === 0,
-        approve: can(actor, "payroll.approve") && !own && row.state === "submitted",
+        approve:
+          can(actor, "payroll.approve") &&
+          !own &&
+          row.state === "submitted" &&
+          batchInScope(actor, ["payroll.approve"], preview, employees),
         discard: can(actor, "compensation.manage") && own && row.state === "previewed",
       },
       selfPrepared: own,
@@ -93,7 +146,7 @@ export function createCompensationService(prisma: PrismaClient) {
       actor: AuthenticatedActor,
       calc: z.infer<typeof import("./compensation.schema.js").calcQuerySchema>,
     ): Promise<Structures> {
-      requirePayroll(actor);
+      requireOrgWidePayroll(actor);
       const data = await loadCalculationData(repository, todayInOrgZone().slice(0, 7));
       const changes = await repository.structureChanges();
       const templateList = data.templates.map((template) => {
@@ -285,7 +338,7 @@ export function createCompensationService(prisma: PrismaClient) {
       key: string | undefined,
       requestId: string,
     ) {
-      requireCapability(actor, "compensation.manage");
+      requireOrgWide(actor, "compensation.manage");
       return idempotent(
         prisma,
         { actorId: actor.employeeId, key, command: `structure.propose:${kind}:${input.templateId}` },
@@ -334,7 +387,7 @@ export function createCompensationService(prisma: PrismaClient) {
       note: string,
       requestId: string,
     ) {
-      requireCapability(actor, decision === "withdraw" ? "compensation.manage" : "payroll.approve");
+      requireOrgWide(actor, decision === "withdraw" ? "compensation.manage" : "payroll.approve");
       return idempotent(
         prisma,
         { actorId: actor.employeeId, key: undefined, command: `structure.${decision}:${id}` },
@@ -394,12 +447,15 @@ export function createCompensationService(prisma: PrismaClient) {
     },
     async listImports(actor: AuthenticatedActor) {
       requirePayroll(actor);
-      return Promise.all((await repository.imports()).map((row) => batchDto(actor, row)));
+      const [rows, employees] = await Promise.all([repository.imports(), repository.employees()]);
+      return Promise.all(rows.filter((row) => visible(actor, row, employees)).map((row) => batchDto(actor, row)));
     },
     async import(actor: AuthenticatedActor, id: string) {
       requirePayroll(actor);
       const batch = await repository.import(id);
-      if (!batch) throw new AppError(404, "NOT_FOUND", "Salary import not found.");
+      // Out-of-scope batches answer 404 so other departments' imports cannot be probed.
+      if (!batch || !visible(actor, batch, await repository.employees()))
+        throw new AppError(404, "NOT_FOUND", "Salary import not found.");
       return batchDto(actor, batch);
     },
     upload(
@@ -412,9 +468,16 @@ export function createCompensationService(prisma: PrismaClient) {
       return idempotent(prisma, { actorId: actor.employeeId, key, command: "compensation.import" }, async (tx) => {
         const repo = createCompensationRepository(tx);
         const data = await loadCalculationData(repo, todayInOrgZone().slice(0, 7));
+        // A department-scoped operator revises salaries only in their departments; others read as unknown employees.
+        const inScope = await employeeIdsInScope(
+          tx,
+          actor,
+          "compensation.manage",
+          data.employees.map((row) => row.id),
+        );
         const seen = new Set<string>();
         const rows: CompensationBatch["rows"] = input.records.map((record, index) => {
-          const employee = data.employees.find((row) => row.code === record.employeeCode);
+          const employee = data.employees.find((row) => row.code === record.employeeCode && inScope.has(row.id));
           const current = employee ? Number(currentCtc(data.compensation, employee.id, record.effectiveFrom)) : 0;
           const annual = paiseFromAmount(record.annualCtc);
           const duplicateKey = `${record.employeeCode}:${record.effectiveFrom}`;
@@ -504,7 +567,10 @@ export function createCompensationService(prisma: PrismaClient) {
       key: string | undefined,
       requestId: string,
     ) {
-      requireCapability(actor, ["approve", "reject"].includes(decision) ? "payroll.approve" : "compensation.manage");
+      const capability: Capability = ["approve", "reject"].includes(decision)
+        ? "payroll.approve"
+        : "compensation.manage";
+      requireCapability(actor, capability);
       return idempotent(
         prisma,
         { actorId: actor.employeeId, key, command: `compensation.${decision}:${id}` },
@@ -513,7 +579,14 @@ export function createCompensationService(prisma: PrismaClient) {
           await repo.lock(`import:${id}`);
           const batch = await repo.import(id);
           if (!batch) throw new AppError(404, "NOT_FOUND", "Salary import not found.");
+          // Every employee in the batch must be inside the actor's scope for this decision (BE-003); 404 otherwise.
+          const scoped = compensationBatchSchema.pick({ rows: true }).parse(batch.preview);
+          const employees = await repo.employees();
           const own = batch.uploadedBy === actor.employeeId;
+          // (An uploader may still discard their own batch that matched no employee at all.)
+          const touchesNobody = own && batchDepartments(scoped, employees).length === 0;
+          if (!touchesNobody && !batchInScope(actor, [capability], scoped, employees))
+            throw new AppError(404, "NOT_FOUND", "Salary import not found.");
           if (["submit", "discard"].includes(decision) ? !own : own)
             throw new AppError(403, "SELF_APPROVAL", "Salary imports need an independent approver.");
           if (["submit", "discard"].includes(decision) ? batch.state !== "previewed" : batch.state !== "submitted")
@@ -524,7 +597,6 @@ export function createCompensationService(prisma: PrismaClient) {
           if (decision === "submit" && (preview.totals.errors > 0 || preview.totals.duplicates > 0))
             throw new AppError(422, "IMPORT_ERRORS", "Resolve invalid and duplicate rows before submission.");
           if (decision === "approve") {
-            const employees = await repo.employees();
             for (const row of preview.rows.filter((row) => ["ok", "warning"].includes(row.status))) {
               const employee = employees.find((person) => person.code === row.employeeCode);
               if (!employee || !row.effectiveFrom || !row.newCtc)

@@ -1,13 +1,22 @@
 import "server-only";
 import { db, photoUrlFor } from "@/lib/mocks/store";
 import { organization } from "@/lib/mocks/seed/organization";
-import { personas } from "@/lib/mocks/seed/people";
+import { problem } from "@/lib/api/core/problem";
+import {
+  personas,
+  type MockPersona,
+  type MockPersonaOption,
+} from "@/lib/mocks/seed/people";
+import { isAccountDisabled } from "@/lib/mocks/handlers/access-store";
 import { actorFor, me } from "@/lib/mocks/handlers/shared";
 import { initialsOf } from "@/lib/utils/format";
-import type { Persona, PersonaOption, Session } from "@/types/session";
+import type { Session } from "@/types/session";
 
-export function mockSession(persona: Persona): Session {
+/** A demo session; roles and capabilities may be empty (deny by default) when every grant was revoked. */
+export function mockSession(persona: MockPersona): Session {
   const actor = actorFor(persona);
+  if (isAccountDisabled(actor.employeeId))
+    throw problem(401, "UNAUTHENTICATED", "This account is disabled.");
   const employee = me(actor);
   return {
     userId: `usr_${persona}`,
@@ -32,8 +41,8 @@ export function mockSession(persona: Persona): Session {
   };
 }
 
-export function mockPersonaOptions(): PersonaOption[] {
-  return (Object.keys(personas) as Persona[]).map((id) => {
+export function mockPersonaOptions(): MockPersonaOption[] {
+  return (Object.keys(personas) as MockPersona[]).map((id) => {
     const actor = actorFor(id);
     const employee = me(actor);
     return {

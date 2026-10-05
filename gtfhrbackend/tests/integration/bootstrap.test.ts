@@ -55,7 +55,7 @@ test("clean deployment bootstraps organization and exactly one enabled HR accoun
   );
   assert.equal(await api.prisma.employee.count(), 1);
   assert.equal(await api.prisma.userAccount.count({ where: { disabledAt: null } }), 1);
-  assert.equal(await api.prisma.roleAssignment.count({ where: { role: "hr_operator" } }), 1);
+  assert.equal(await api.prisma.roleAssignment.count({ where: { role: "super_admin" } }), 1);
   const login = dataOf<{ accessToken: string; employee: { id: string } }>(
     await api.as(null, "POST", "/auth/login", { body: { email: env.HR_BOOTSTRAP_EMAIL, password } }),
   );

@@ -2,7 +2,7 @@ import { EmploymentStatus, type PrismaClient } from "@prisma/client";
 import type { Request, RequestHandler } from "express";
 import { prismaOf } from "../database/prisma.js";
 import { AuthenticationError } from "../errors/AuthenticationError.js";
-import type { AuthenticatedActor } from "../security/actor.js";
+import { PRIVILEGED_ROLES, scopesFor, type AuthenticatedActor, type RoleGrant } from "../security/actor.js";
 import { capabilitiesFor } from "../security/capabilities.js";
 import { verifyAccessToken } from "../security/tokens.js";
 import { createAuthRepository } from "../../modules/auth/auth.repository.js";
@@ -27,16 +27,17 @@ export async function loadActor(
     throw new AuthenticationError("INVALID_TOKEN", "The access token is invalid.");
 
   const mfaVerified = claims?.mfaVerified ?? false;
-  const roles = employee.roleAssignments
-    .map(({ role }) => role)
-    .filter(
-      (role) =>
-        !config.mfaEnforced || mfaVerified || !["hr_operator", "payroll_operator", "payroll_approver"].includes(role),
-    );
+  // Privileged grants stay inert until this session has passed MFA (when enforced).
+  const grants: RoleGrant[] = employee.roleAssignments
+    .filter(({ role }) => !config.mfaEnforced || mfaVerified || !PRIVILEGED_ROLES.includes(role))
+    .map(({ role, departments }) => ({ role, departmentIds: departments.map(({ departmentId }) => departmentId) }));
+  const roles = grants.map(({ role }) => role);
   return {
     employeeId,
     roles,
     capabilities: capabilitiesFor(roles),
+    scopes: scopesFor(grants),
+    grants,
     mfaVerified,
     mfaRequired: Boolean(security?.verifiedAt),
   };
@@ -56,6 +57,8 @@ export const authenticate: RequestHandler = async (request, _response, next) => 
     !request.actor.mfaVerified &&
     path !== "/api/v1/me" &&
     path !== "/api/v1/auth/logout-all" &&
+    // The realtime socket carries no data (only "something changed" signals); data APIs stay behind MFA.
+    path !== "/api/v1/me/realtime/ticket" &&
     !path.startsWith("/api/v1/me/security")
   )
     throw new AuthorizationError("Verify your authenticator code before continuing.", "MFA_REQUIRED");

@@ -6,6 +6,7 @@ import { ConfirmButton, FormSheet, InlineForm } from "@/components/features/admi
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, describedBy } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { applyRosterPatternAction, cancelSwapAction, requestSwapAction, saveRosterAction, saveWeeklyOffAction } from "@/lib/actions/attendance";
 import { formatDate } from "@/lib/utils/format";
@@ -28,14 +29,15 @@ export function DepartmentPicker({ departments, selected, weekStart }: { departm
 
 /** Employees × days grid. Unpublished drafts never reach employees or attendance. */
 export function RosterGrid({ planner, today }: { planner: RosterPlanner; today: string }) {
-  const { submit, pending, formError } = useCommand(saveRosterAction);
+  const { formRef, draft, submit, pending, formError } = useCommand(saveRosterAction, { draftKey: `roster.grid:${planner.department}:${planner.weekStart}` });
   const options = [
     { value: "", label: `Dept. (${planner.departmentShift})` },
     ...planner.shifts.map((shift) => ({ value: shift.id, label: `${shift.name} ${shift.start}–${shift.end}` })),
     { value: "off", label: "Week off" },
   ];
   return (
-    <form onSubmit={submit} className="stack" noValidate>
+    <form ref={formRef} onSubmit={submit} className="stack" noValidate>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="department" value={planner.department} />
       <input type="hidden" name="weekStart" value={planner.weekStart} />
       <input type="hidden" name="version" value={planner.version} />
@@ -107,7 +109,7 @@ export function RosterPatternForm({ planner }: { planner: RosterPlanner }) {
   const [pattern, setPattern] = useState("rotate");
   const shiftOptions = planner.shifts.map((shift) => ({ value: shift.id, label: shift.name }));
   return (
-    <InlineForm action={applyRosterPatternAction} submitLabel="Apply to draft">
+    <InlineForm draftKey={`roster.pattern:${planner.department}:${planner.weekStart}`} action={applyRosterPatternAction} submitLabel="Apply to draft">
       {(fieldError) => (
         <>
           <input type="hidden" name="department" value={planner.department} />
@@ -145,7 +147,7 @@ export function RosterPatternForm({ planner }: { planner: RosterPlanner }) {
 export function WeeklyOffForm({ rule }: { rule: WeeklyOffRule }) {
   const [saturday, setSaturday] = useState(rule.offWeekdays.includes(6));
   return (
-    <InlineForm action={saveWeeklyOffAction} submitLabel="Save weekly offs">
+    <InlineForm draftKey={`roster.weekly-off:${rule.department}`} action={saveWeeklyOffAction} submitLabel="Save weekly offs">
       {(fieldError) => (
         <>
           <input type="hidden" name="department" value={rule.department} />
@@ -175,7 +177,7 @@ export function SwapRequestSheet({ options }: { options: MyRoster["swapOptions"]
   const [date, setDate] = useState(options[0]?.date ?? "");
   const option = options.find((item) => item.date === date);
   return (
-    <FormSheet action={requestSwapAction} title="Request a shift swap" description="Swap your published shift with a colleague for one day. Your manager approves; the roster updates for both of you." trigger="Request swap" triggerVariant="secondary" icon="swap" submitLabel="Send request" pendingLabel="Sending…">
+    <FormSheet draftKey={"roster.swap"} action={requestSwapAction} title="Request a shift swap" description="Swap your published shift with a colleague for one day. Your manager approves; the roster updates for both of you." trigger="Request swap" triggerVariant="secondary" icon="swap" submitLabel="Send request" pendingLabel="Sending…">
       {(fieldError) => (
         <>
           <FormField id="sw-date" label="Day" required error={fieldError("date")} hint={option ? `You're on ${option.mine}` : undefined}>

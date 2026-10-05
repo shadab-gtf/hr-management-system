@@ -16,7 +16,8 @@ import {
   type SurveyInput,
   type SurveyResults,
 } from "../../contracts/engage.js";
-import { can, requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { departmentInScope, isOrgWide, requireOrgWide } from "../../core/security/scope.js";
 import { newId } from "../../core/database/ids.js";
 import { ConflictError, NotFoundError, ValidationError } from "../../core/errors/index.js";
 import { assertVersion } from "../../core/http/request-context.js";
@@ -27,6 +28,12 @@ import { createEngageRepository, engageCommand } from "./engage.repository.js";
 import type { CommandContext } from "../workspace/workspace.schema.js";
 import { storedBallot, storedPoll, storedPost, storedPraise, storedResponse, storedSurvey } from "./engage.schema.js";
 
+/**
+ * Access (BE-003). Feed, polls, praise and survey answers are self-service for every employee. Administering engage
+ * content is organization-level: survey design, publishing, results and exports, and moderating other people's posts
+ * need an organization-wide grant (`requireOrgWide`). A department-targeted poll can also be seen and closed by an
+ * HR operator whose `survey.manage` scope includes that department.
+ */
 export function createEngageService(prisma: PrismaClient) {
   const repo = createEngageRepository(prisma);
   const command = <T>(
@@ -48,7 +55,7 @@ export function createEngageService(prisma: PrismaClient) {
           const post = storedPost.parse(r.data);
           return {
             ...post,
-            canDelete: r.ownerId === actor.employeeId || can(actor, "announcement.publish"),
+            canDelete: r.ownerId === actor.employeeId || isOrgWide(actor, "announcement.publish"),
             reactions: reactionKindSchema.options.map((kind) => ({
               kind,
               count: reactions.filter((v) => v.parentId === r.id && v.state === kind).length,
@@ -139,7 +146,7 @@ export function createEngageService(prisma: PrismaClient) {
     archivePost(actor: AuthenticatedActor, id: string, context: CommandContext) {
       return command(actor, "engage.post.archive", id, context, async (r) => {
         const row = await r.require(id, "post");
-        if (row.ownerId !== actor.employeeId) requireCapability(actor, "announcement.publish");
+        if (row.ownerId !== actor.employeeId) requireOrgWide(actor, "announcement.publish");
         await r.update(id, row.data, row.version, "archived");
         return { ok: true };
       });
@@ -148,10 +155,16 @@ export function createEngageService(prisma: PrismaClient) {
       const employee = await repo.employee(actor.employeeId);
       const employees = await repo.employees();
       const ballots = await repo.list("ballot");
+      const departments = await repo.departments();
+      const manages = (department: string | null | undefined) => manageablePoll(actor, department, departments);
       const polls: Poll[] = [];
       for (const row of await repo.list("poll")) {
         const poll = storedPoll.parse(row.data);
-        if (poll.input.department && poll.input.department !== employee.department.name && !can(actor, "survey.manage"))
+        if (
+          poll.input.department &&
+          poll.input.department !== employee.department.name &&
+          !manages(poll.input.department)
+        )
           continue;
         const author = employees.find((e) => e.id === poll.authorId);
         if (!author) continue;
@@ -174,7 +187,7 @@ export function createEngageService(prisma: PrismaClient) {
           voterCount: votes.length,
           hasVoted: Boolean(mine),
           resultsVisible,
-          canClose: !closed && (poll.authorId === actor.employeeId || can(actor, "survey.manage")),
+          canClose: !closed && (poll.authorId === actor.employeeId || manages(poll.input.department)),
           options: poll.input.options.map((label, index) => {
             const id = `${row.id}_${index}`;
             const count = votes.filter((v) => storedBallot.parse(v.data).optionIds.includes(id)).length;
@@ -197,7 +210,7 @@ export function createEngageService(prisma: PrismaClient) {
       }
       return {
         polls,
-        departments: (await repo.departments()).map((d) => d.name),
+        departments: departments.map((d) => d.name),
         myDepartment: employee.department.name,
       };
     },
@@ -250,7 +263,13 @@ export function createEngageService(prisma: PrismaClient) {
     closePoll(actor: AuthenticatedActor, id: string, context: CommandContext) {
       return command(actor, "engage.poll.close", id, context, async (r) => {
         const row = await r.require(id, "poll");
-        if (row.ownerId !== actor.employeeId) requireCapability(actor, "survey.manage");
+        const department = storedPoll.parse(row.data).input.department;
+        if (row.ownerId !== actor.employeeId && !manageablePoll(actor, department, await r.departments())) {
+          // A poll for another department is invisible to this person, so it answers 404 like `vote`.
+          if (department && department !== (await r.employee(actor.employeeId)).department.name)
+            throw new NotFoundError();
+          requireOrgWide(actor, "survey.manage");
+        }
         await r.update(id, { ...storedPoll.parse(row.data), closedEarly: true }, row.version);
         return { ok: true };
       });
@@ -360,7 +379,7 @@ export function createEngageService(prisma: PrismaClient) {
       };
     },
     async surveyDetail(actor: AuthenticatedActor, id: string) {
-      requireCapability(actor, "survey.manage");
+      requireOrgWide(actor, "survey.manage");
       return service.surveyView(actor, id);
     },
     async surveyView(actor: AuthenticatedActor, id: string) {
@@ -387,7 +406,7 @@ export function createEngageService(prisma: PrismaClient) {
       };
     },
     async surveys(actor: AuthenticatedActor, admin: boolean) {
-      if (admin) requireCapability(actor, "survey.manage");
+      if (admin) requireOrgWide(actor, "survey.manage");
       const employee = await repo.employee(actor.employeeId);
       const surveys = [];
       for (const row of await repo.list("survey")) {
@@ -406,7 +425,7 @@ export function createEngageService(prisma: PrismaClient) {
       };
     },
     saveSurvey(actor: AuthenticatedActor, input: SurveyInput, id: string | undefined, context: CommandContext) {
-      requireCapability(actor, "survey.manage");
+      requireOrgWide(actor, "survey.manage");
       return command(actor, "survey.save", id ?? "new", context, async (r) => {
         const row = id ? await r.require(id, "survey") : null;
         const previous = row ? storedSurvey.parse(row.data) : null;
@@ -446,7 +465,7 @@ export function createEngageService(prisma: PrismaClient) {
       input: { question?: QuestionInput; questionId?: string; direction?: "up" | "down" },
       context: CommandContext,
     ) {
-      requireCapability(actor, "survey.manage");
+      requireOrgWide(actor, "survey.manage");
       return command(actor, `survey.${op}`, id, context, async (r) => {
         const row = await r.require(id, "survey");
         const survey = storedSurvey.parse(row.data);
@@ -549,7 +568,7 @@ export function createEngageService(prisma: PrismaClient) {
       });
     },
     async results(actor: AuthenticatedActor, id: string): Promise<SurveyResults> {
-      requireCapability(actor, "survey.manage");
+      requireOrgWide(actor, "survey.manage");
       const survey = await service.surveyView(actor, id);
       const answers = (await repo.list("survey_response", { parentId: id })).map((r) => ({
         id: r.id,
@@ -656,4 +675,15 @@ export function createEngageService(prisma: PrismaClient) {
     },
   };
   return service;
+}
+
+/** Org-wide survey managers manage every poll; a scoped one only polls targeted at a department in their scope. */
+function manageablePoll(
+  actor: AuthenticatedActor,
+  department: string | null | undefined,
+  departments: readonly { id: string; name: string }[],
+): boolean {
+  if (isOrgWide(actor, "survey.manage")) return true;
+  const target = department ? departments.find((d) => d.name === department) : undefined;
+  return Boolean(target && departmentInScope(actor, "survey.manage", target.id));
 }

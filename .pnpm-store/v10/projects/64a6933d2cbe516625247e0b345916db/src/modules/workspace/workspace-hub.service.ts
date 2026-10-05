@@ -1,6 +1,13 @@
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
-import { can, requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import {
+  assertEmployeeInScope,
+  departmentInScope,
+  employeeIdsInScope,
+  hasAdministrativeReach,
+  isOrgWide,
+} from "../../core/security/scope.js";
 import { decrypt, encrypt } from "../../core/security/encryption.js";
 import { newId } from "../../core/database/ids.js";
 import { personRef } from "../../core/people/person-ref.js";
@@ -31,16 +38,30 @@ export function createWorkspaceHubService(prisma: PrismaClient) {
   return {
     async home(actor: AuthenticatedActor) {
       const employee = await repo.employee(actor.employeeId);
-      const hr = can(actor, "employee.read"),
+      // HR / payroll widgets aggregate only over employees inside the caller's scope (BE-003). The team widget is the
+      // manager-of-team view (direct reports) and is independent of department scopes.
+      const hr = hasAdministrativeReach(actor, "employee.read"),
+        helpdesk = hasAdministrativeReach(actor, "helpdesk.queue"),
         manager = actor.roles.includes("manager"),
-        finance = can(actor, "payroll.prepare") || can(actor, "payroll.approve");
-      const [employees, events, settings, tickets, payroll] = await Promise.all([
+        payrollCapability = (["payroll.prepare", "payroll.approve"] as const).find((c) =>
+          hasAdministrativeReach(actor, c),
+        );
+      const [employees, events, settings, allTickets, payroll] = await Promise.all([
         repo.employees(),
         workspace.events(actor),
         workspace.celebrations(),
-        repo.list("ticket", hr ? {} : { ownerId: actor.employeeId }),
-        finance ? pay.latestRun() : null,
+        repo.list("ticket", helpdesk ? {} : { ownerId: actor.employeeId }),
+        payrollCapability ? pay.latestRun() : null,
       ]);
+      const departmentOf = new Map(employees.map((e) => [e.id, e.departmentId]));
+      const inScope = (capability: Parameters<typeof departmentInScope>[1], employeeId: string | null) => {
+        if (!employeeId) return false;
+        if (isOrgWide(actor, capability)) return true;
+        const departmentId = departmentOf.get(employeeId);
+        return departmentId !== undefined && departmentInScope(actor, capability, departmentId);
+      };
+      const tickets = allTickets.filter((t) => t.ownerId === actor.employeeId || inScope("helpdesk.queue", t.ownerId));
+      const workforce = hr ? employees.filter((e) => inScope("employee.read", e.id)) : [];
       const today = todayInOrgZone();
       const month = today.slice(0, 7);
       const team = employees.filter((e) => e.managerId === employee.id);
@@ -100,13 +121,15 @@ export function createWorkspaceHubService(prisma: PrismaClient) {
           : null,
         workforce: hr
           ? {
-              headcount: employees.length,
-              joinersThisMonth: employees.filter((e) => toIsoDate(e.joinedOn).startsWith(month)).length,
-              onNotice: employees.filter((e) => e.status === "notice").length,
-              openTickets: tickets.filter((t) => t.state !== "closed" && t.state !== "resolved").length,
-              byDepartment: [...new Set(employees.map((e) => e.department.name))].map((name) => ({
+              headcount: workforce.length,
+              joinersThisMonth: workforce.filter((e) => toIsoDate(e.joinedOn).startsWith(month)).length,
+              onNotice: workforce.filter((e) => e.status === "notice").length,
+              openTickets: tickets.filter(
+                (t) => inScope("helpdesk.queue", t.ownerId) && t.state !== "closed" && t.state !== "resolved",
+              ).length,
+              byDepartment: [...new Set(workforce.map((e) => e.department.name))].map((name) => ({
                 name,
-                count: employees.filter((e) => e.department.name === name).length,
+                count: workforce.filter((e) => e.department.name === name).length,
               })),
             }
           : null,
@@ -119,7 +142,9 @@ export function createWorkspaceHubService(prisma: PrismaClient) {
                 timeZone: "UTC",
               }),
               state: payroll.state,
-              employeeCount: payroll.results.length,
+              employeeCount: payrollCapability
+                ? payroll.results.filter((r) => inScope(payrollCapability, r.employeeId)).length
+                : 0,
             }
           : null,
       });
@@ -167,18 +192,22 @@ export function createWorkspaceHubService(prisma: PrismaClient) {
       );
     },
     async requests(actor: AuthenticatedActor, view: string | undefined): Promise<ServiceRequest[]> {
-      if (!can(actor, "employee.update") && !can(actor, "loan.approve"))
-        throw new AuthorizationError("HR or Finance access is required.");
+      const hr = hasAdministrativeReach(actor, "employee.update"),
+        finance = hasAdministrativeReach(actor, "loan.approve");
+      if (!hr && !finance) throw new AuthorizationError("HR or Finance access is required.");
       const requests: ServiceRequest[] = [];
+      // Each verifier sees only requests from employees inside their grant's departments (BE-003).
       for (const row of await repo.list("profile_change")) {
         const data = profileChange.parse(row.data);
-        if (data.verification === "Finance" ? !can(actor, "loan.approve") : !can(actor, "employee.update")) continue;
         if (!row.ownerId) continue;
+        const capability = data.verification === "Finance" ? "loan.approve" : "employee.update";
+        const requester = await repo.employee(row.ownerId);
+        if (!departmentInScope(actor, capability, requester.departmentId)) continue;
         requests.push({
           id: row.id,
           kind: "profile_change",
           reference: data.reference,
-          requester: personRef(await repo.employee(row.ownerId)),
+          requester: personRef(requester),
           title: `Update ${data.field}`,
           detail: "Personal profile change",
           proposed: data.field === "bankAccount" ? "Bank account change (protected)" : data.value,
@@ -189,18 +218,33 @@ export function createWorkspaceHubService(prisma: PrismaClient) {
           decisionNote: data.decisionNote,
         });
       }
-      if (can(actor, "employee.update")) {
-        const letters = await createLifecycleService(prisma).read("letter_queue", {
+      if (hr && hasAdministrativeReach(actor, "letter.issue")) {
+        const letters = z.array(serviceRequestSchema).parse(
+          await createLifecycleService(prisma).read("letter_queue", {
+            actor,
+            params: {},
+            query: { view: view ?? "open" },
+            version: undefined,
+            key: undefined,
+          }),
+        );
+        const allowed = await employeeIdsInScope(
+          prisma,
           actor,
-          params: {},
-          query: { view: view ?? "open" },
-          version: undefined,
-          key: undefined,
-        });
-        requests.push(...z.array(serviceRequestSchema).parse(letters));
+          "letter.issue",
+          letters.map((l) => l.requester.id),
+        );
+        requests.push(...letters.filter((l) => allowed.has(l.requester.id)));
       }
-      if (can(actor, "loan.approve"))
-        for (const loan of await pay.loans())
+      if (finance) {
+        const loans = await pay.loans();
+        const allowed = await employeeIdsInScope(
+          prisma,
+          actor,
+          "loan.approve",
+          loans.map((l) => l.employeeId),
+        );
+        for (const loan of loans.filter((l) => allowed.has(l.employeeId)))
           requests.push({
             id: loan.id,
             kind: "loan",
@@ -215,6 +259,7 @@ export function createWorkspaceHubService(prisma: PrismaClient) {
             verifier: "Finance",
             decisionNote: loan.decisionNote,
           });
+      }
       return requests.filter((r) =>
         view === "closed" ? ["approved", "rejected"].includes(r.state) : ["pending", "in_progress"].includes(r.state),
       );
@@ -257,7 +302,11 @@ export function createWorkspaceHubService(prisma: PrismaClient) {
         async (r, tx) => {
           const row = await r.require(id, "profile_change");
           const data = profileChange.parse(row.data);
-          requireCapability(actor, data.verification === "Finance" ? "loan.approve" : "employee.update");
+          const capability = data.verification === "Finance" ? "loan.approve" : "employee.update";
+          requireCapability(actor, capability);
+          // Out-of-scope requests answer 404 before anything is written (BE-003).
+          if (row.ownerId && row.ownerId !== actor.employeeId)
+            await assertEmployeeInScope(tx, actor, capability, row.ownerId);
           if (row.ownerId === actor.employeeId)
             throw new AuthorizationError("You cannot verify your own profile changes.");
           if (!row.ownerId || !["pending", "in_progress"].includes(data.state))

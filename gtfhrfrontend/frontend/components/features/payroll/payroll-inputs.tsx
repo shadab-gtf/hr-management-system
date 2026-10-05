@@ -25,7 +25,7 @@ export function AddPayrollInputSheet({ runId, employees, periodMonth }: { runId:
   const [kind, setKind] = useState<PayrollInputKind>("bonus");
   const p = "pin";
   return (
-    <FormSheet
+    <FormSheet draftKey={`payroll.input:${runId}`}
       action={addPayrollInputAction}
       title="Add payroll input"
       description="One-time inputs apply to this period only. The run recalculates immediately and the change is audited."
@@ -78,7 +78,7 @@ export function RemovePayrollInputButton({ runId, inputId }: { runId: string; in
 export function HoldSalarySheet({ runId, employees }: { runId: string; employees: Option[] }) {
   const p = "hold";
   return (
-    <FormSheet
+    <FormSheet draftKey={`payroll.hold:${runId}`}
       action={holdSalaryAction}
       title="Hold salary"
       description="The payslip is still generated, but the salary is left out of the bank advice until it is released."
@@ -106,7 +106,7 @@ export function HoldSalarySheet({ runId, employees }: { runId: string; employees
 export function ReleaseSalarySheet({ runId, holdId, name }: { runId: string; holdId: string; name: string }) {
   const p = `rel-${holdId}`;
   return (
-    <FormSheet action={releaseSalaryAction} title={`Release salary · ${name}`} description="Released salaries are included in the next bank advice export." trigger="Release" triggerVariant="ghost" triggerSize="sm" submitLabel="Release salary">
+    <FormSheet draftKey={`payroll.release:${runId}:${holdId}`} action={releaseSalaryAction} title={`Release salary · ${name}`} description="Released salaries are included in the next bank advice export." trigger="Release" triggerVariant="ghost" triggerSize="sm" submitLabel="Release salary">
       {(fieldError) => (
         <>
           <input type="hidden" name="runId" value={runId} />

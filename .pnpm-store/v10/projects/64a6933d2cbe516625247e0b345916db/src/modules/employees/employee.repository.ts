@@ -14,7 +14,11 @@ export interface DirectoryFilters {
   department?: string | undefined;
   location?: string | undefined;
   status?: EmploymentStatus | undefined;
-  includeExited: boolean;
+  /**
+   * Rows the caller may see beyond the active directory (BE-003): `null` = no HR reach (active employees only, no
+   * status filter); otherwise the Employee filter for the caller's `employee.read` scope (`{}` = organization-wide).
+   */
+  hrScope: Prisma.EmployeeWhereInput | null;
 }
 
 export interface NewEmployee {
@@ -37,11 +41,14 @@ const notExited = { status: { not: EmploymentStatus.exited } } as const;
 export function createEmployeeRepository(db: TransactionClient) {
   return {
     async listDirectory(filters: DirectoryFilters, page: { cursor?: string | undefined; limit: number }) {
-      const { q, department, location, status } = filters;
+      const { q, department, location, status, hrScope } = filters;
+      // Exited people and the status filter are HR data: only within the caller's HR scope.
+      const visibility: Prisma.EmployeeWhereInput =
+        hrScope === null ? notExited : Object.keys(hrScope).length === 0 ? {} : { OR: [notExited, hrScope] };
       const where: Prisma.EmployeeWhereInput = {
+        AND: [visibility, status && hrScope !== null ? { status, ...hrScope } : {}],
         ...(department ? { department: { name: department } } : {}),
         ...(location ? { location: { name: location } } : {}),
-        ...(status ? { status } : {}),
         ...(q
           ? {
               OR: [
@@ -52,7 +59,6 @@ export function createEmployeeRepository(db: TransactionClient) {
               ],
             }
           : {}),
-        ...(filters.includeExited ? {} : notExited),
       };
       const [rows, total] = await Promise.all([
         db.employee.findMany({
@@ -73,6 +79,10 @@ export function createEmployeeRepository(db: TransactionClient) {
         orderBy: { name: "asc" },
       });
       return rows.map(({ name }) => name);
+    },
+
+    activeDepartments() {
+      return db.department.findMany({ where: notArchived, select: { id: true, name: true }, orderBy: { name: "asc" } });
     },
 
     async activeLocationNames(): Promise<string[]> {
@@ -107,10 +117,6 @@ export function createEmployeeRepository(db: TransactionClient) {
 
     create(employee: NewEmployee) {
       return db.employee.create({ data: employee, select: { id: true, code: true, workEmail: true } });
-    },
-
-    grantRole(employeeId: string, role: "employee", reason: string) {
-      return db.roleAssignment.create({ data: { employeeId, role, reason } });
     },
   };
 }

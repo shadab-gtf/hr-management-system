@@ -4,6 +4,8 @@ import { createPrismaClient } from "./core/database/prisma.js";
 import { logger } from "./core/logger/logger.js";
 import { createDeliveryService } from "./modules/delivery/delivery.service.js";
 import { createReportsService } from "./modules/reports/reports.service.js";
+import { attachRealtime } from "./modules/realtime/realtime.hub.js";
+import { purgeExpiredSelfies } from "./modules/attendance-log/attendance-log.service.js";
 
 const prisma = createPrismaClient();
 const delivery = createDeliveryService(prisma);
@@ -15,6 +17,8 @@ function work() {
   runningJob = (async () => {
     await reports.processDue();
     await delivery.tick();
+    // Hourly at most: deletes attendance selfies past ATTENDANCE_SELFIE_RETENTION_DAYS.
+    await purgeExpiredSelfies(prisma);
   })()
     .catch(() => {
       logger.error("background job failed", { code: "BACKGROUND_JOB_FAILED" });
@@ -28,11 +32,15 @@ const server = buildApp(prisma).listen(config.port, config.host, () => {
   logger.info("listening", { url: `http://${config.host}:${config.port}` });
 });
 
+// WebSocket hub on the same port (HTTP upgrade at /api/v1/realtime). Independent of BACKGROUND_JOBS_ENABLED.
+const realtime = attachRealtime(server, prisma);
+
 server.on("error", (error) => {
   logger.error("server failed to start", { error: error.message });
   process.exitCode = 1;
   if (timer) clearInterval(timer);
   delivery.close();
+  void realtime.close();
   void prisma.$disconnect();
 });
 server.on("close", () => {
@@ -47,5 +55,6 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.once(signal, () => {
     stopping = true;
     if (timer) clearInterval(timer);
-    server.close();
+    // Close sockets (and the database listener) first: open WebSockets would otherwise keep the server alive.
+    void realtime.close().finally(() => server.close());
   });

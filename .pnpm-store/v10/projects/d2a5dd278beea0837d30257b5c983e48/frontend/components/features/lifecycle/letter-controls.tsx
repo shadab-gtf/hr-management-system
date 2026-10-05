@@ -80,7 +80,7 @@ export function TemplateSheet({ template, placeholders }: { template?: LetterTem
     area.focus();
   };
   return (
-    <FormSheet action={saveLetterTemplateAction} title={template ? `Edit ${template.name}` : "New letter template"} description="Placeholders are filled from the employee record when a letter is generated." trigger={template ? "Edit" : "New template"} triggerVariant={template ? "ghost" : "primary"} triggerSize={template ? "sm" : "md"} icon={template ? undefined : "add"} submitLabel={template ? "Save new version" : "Create template"}>
+    <FormSheet draftKey={template ? `letter-template.edit:${template.id}` : "letter-template.new"} action={saveLetterTemplateAction} title={template ? `Edit ${template.name}` : "New letter template"} description="Placeholders are filled from the employee record when a letter is generated." trigger={template ? "Edit" : "New template"} triggerVariant={template ? "ghost" : "primary"} triggerSize={template ? "sm" : "md"} icon={template ? undefined : "add"} submitLabel={template ? "Save new version" : "Create template"}>
       {(fieldError) => (
         <>
           {template && <input type="hidden" name="id" value={template.id} />}

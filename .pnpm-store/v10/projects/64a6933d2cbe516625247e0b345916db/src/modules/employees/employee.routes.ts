@@ -12,16 +12,18 @@ export function employeeRoutes(prisma: PrismaClient): Router {
   const controller = createEmployeeController(createEmployeeService(prisma));
   const router = Router();
 
-  // router.use(authenticate);
+  router.use(authenticate);
   router.get(
     "/",
+    requirePermission("directory.read"),
     validate("query", listEmployeesQuerySchema, { code: "INVALID_QUERY", message: "Check the employee list filters." }),
     controller.list,
   );
-  router.get("/facets", controller.facets);
+  router.get("/facets", requirePermission("directory.read"), controller.facets);
   router.get("/form-options", requirePermission("employee.create"), controller.formOptions);
   router.post(
     "/",
+    requirePermission("employee.create"),
     validate("body", createEmployeeSchema, { message: "Employee details are invalid.", fieldErrors: true }),
     controller.create,
   );

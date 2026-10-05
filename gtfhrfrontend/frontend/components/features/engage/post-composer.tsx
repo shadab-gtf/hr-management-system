@@ -6,13 +6,14 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { SelectInput, TextArea } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { createPostAction } from "@/lib/actions/engage";
 
 export function PostComposer({ me, groups }: { me: { id: string; initials: string; firstName: string; photoUrl: string | null }; groups: string[] }) {
   const form = useRef<HTMLFormElement>(null);
   const [length, setLength] = useState(0);
-  const { submit, pending, fieldError, formError } = useCommand(createPostAction, {
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(createPostAction, { draftKey: "post.new", form,
     onSuccess: () => {
       form.current?.reset();
       setLength(0);
@@ -20,7 +21,8 @@ export function PostComposer({ me, groups }: { me: { id: string; initials: strin
   });
   const error = fieldError("body") ?? formError;
   return (
-    <form ref={form} onSubmit={submit} className="composer" noValidate>
+    <form ref={formRef} onSubmit={submit} className="composer" noValidate>
+      <DraftNotice draft={draft} />
       <Avatar initials={me.initials} seed={me.id} src={me.photoUrl} size="lg" />
       <div className="composer-body">
         <label className="sr-only" htmlFor="post-body">

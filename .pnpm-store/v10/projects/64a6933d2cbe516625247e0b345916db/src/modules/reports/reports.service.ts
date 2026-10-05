@@ -4,7 +4,15 @@ import { idempotent } from "../../core/database/idempotency.js";
 import { newId } from "../../core/database/ids.js";
 import { AppError } from "../../core/errors/AppError.js";
 import { assertVersion } from "../../core/http/request-context.js";
-import { can, requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import {
+  can,
+  requireCapability,
+  scopesFor,
+  type AuthenticatedActor,
+  type CapabilityScope,
+  type RoleGrant,
+} from "../../core/security/actor.js";
+import { scopeOf } from "../../core/security/scope.js";
 import { capabilitiesFor } from "../../core/security/capabilities.js";
 import { personRef } from "../../core/people/person-ref.js";
 import { notify } from "../../core/notifications/notify.js";
@@ -55,15 +63,52 @@ import { employeeAttendanceMonth } from "../attendance/attendance.service.js";
 import { probationDefaultsSchema } from "../../contracts/hr-config.js";
 import { addMonthsToDate } from "./reports.rules.js";
 
+/**
+ * Department-wise reporting (BE-003). `report.read` is held only through HR / payroll / super admin grants, so every
+ * report is an administrative read: rows, aggregates and exports cover only the employees inside the actor's
+ * `report.read` scope (a department-scoped operator sees only their departments; org-wide grants see everyone).
+ */
+export function reportScope(actor: AuthenticatedActor): CapabilityScope {
+  return scopeOf(actor, "report.read");
+}
+function inReportScope(scope: CapabilityScope, employee: { departmentId: string }): boolean {
+  return scope === "all" || scope.includes(employee.departmentId);
+}
+/** True when `outer` reaches at least every employee `inner` reaches. */
+function scopeCovers(outer: CapabilityScope, inner: CapabilityScope): boolean {
+  if (outer === "all") return true;
+  if (inner === "all") return false;
+  return inner.every((departmentId) => outer.includes(departmentId));
+}
+/** Employees the actor may report on (all statuses; callers filter further). */
+async function reportEmployees(db: PayDb, actor: AuthenticatedActor) {
+  const scope = reportScope(actor);
+  return (await createPayrollRepository(db).employees()).filter((employee) => inReportScope(scope, employee));
+}
+/** Actor for a background or recipient check, with the person's live grants and department scopes. */
+async function storedActor(repo: ReportsRepository, employeeId: string): Promise<AuthenticatedActor> {
+  const grants: RoleGrant[] = (await repo.roles(employeeId)).map((row) => ({
+    role: row.role,
+    departmentIds: row.departments.map(({ departmentId }) => departmentId),
+  }));
+  const roles = grants.map(({ role }) => role);
+  return { employeeId, roles, capabilities: capabilitiesFor(roles), scopes: scopesFor(grants), grants };
+}
+const artifactScopeSchema = z.object({
+  scope: z.union([z.literal("all"), z.array(z.string())]).default("all"),
+});
+
 export async function datasetRows(db: PayDb, actor: AuthenticatedActor, spec: ReportSpec): Promise<Row[]> {
   const pay = createPayrollRepository(db);
   const reports = createReportsRepository(db);
   const salary = hasSalaryAccess(actor.capabilities);
   const all = await pay.employees();
+  const scope = reportScope(actor);
   const month = spec.filters.month || todayInOrgZone().slice(0, 7);
   const f = spec.filters;
   const employees = all.filter(
     (employee) =>
+      inReportScope(scope, employee) &&
       (!f.department || employee.department.name === f.department) &&
       (!f.location || employee.location.name === f.location) &&
       (f.status ? employee.status === f.status : employee.status !== "exited"),
@@ -198,7 +243,12 @@ export function createReportsService(prisma: PrismaClient) {
         sharedRoles: row.sharedRoles,
         dataset: reportSpecSchema.parse(row.spec).dataset,
       },
-      { id: actor.employeeId, roles: actor.roles, salary: hasSalaryAccess(actor.capabilities) },
+      {
+        id: actor.employeeId,
+        // A super admin holds every role's access, so reports shared with any role are visible to them.
+        roles: actor.roles.includes("super_admin") ? roleLabels.map(({ id: role }) => role) : actor.roles,
+        salary: hasSalaryAccess(actor.capabilities),
+      },
     );
   const loadSaved = async (
     actor: AuthenticatedActor,
@@ -291,7 +341,7 @@ export function createReportsService(prisma: PrismaClient) {
   const service = {
     async library(actor: AuthenticatedActor) {
       requireCapability(actor, "report.read");
-      const employees = await people.employees();
+      const employees = await reportEmployees(prisma, actor);
       const salaryAccess = hasSalaryAccess(actor.capabilities);
       return {
         reports: standardReports.filter((report) => !report.salary || salaryAccess),
@@ -323,7 +373,7 @@ export function createReportsService(prisma: PrismaClient) {
     },
     async analytics(actor: AuthenticatedActor): Promise<ReportAnalytics> {
       requireCapability(actor, "report.read");
-      const employees = await people.employees();
+      const employees = await reportEmployees(prisma, actor);
       const today = todayInOrgZone();
       const active = employees.filter((row) => row.status !== "exited");
       const members: Member[] = employees.map((row) => ({
@@ -378,13 +428,17 @@ export function createReportsService(prisma: PrismaClient) {
     },
     async workforce(actor: AuthenticatedActor) {
       requireCapability(actor, "report.read");
-      const employees = await people.employees();
-      const [analytics, days, leaves, ledger] = await Promise.all([
+      const employees = await reportEmployees(prisma, actor);
+      const ids = new Set(employees.map(({ id }) => id));
+      const [analytics, allDays, allLeaves, allLedger] = await Promise.all([
         service.analytics(actor),
         repository.attendance(todayInOrgZone(), todayInOrgZone()),
         repository.workflows("leave"),
         repository.ledger(),
       ]);
+      const days = allDays.filter((row) => ids.has(row.employeeId));
+      const leaves = allLeaves.filter((row) => ids.has(row.employeeId));
+      const ledger = allLedger.filter((row) => ids.has(row.employeeId));
       const onLeave = new Set(
         leaves
           .filter(
@@ -523,10 +577,12 @@ export function createReportsService(prisma: PrismaClient) {
             for (const recipient of input.recipients) {
               const employee = employees.find((person) => person.id === recipient && person.status !== "exited");
               if (!employee) throw new AppError(422, "INVALID_RECIPIENT", "Select active recipients.");
-              const roles = (await repo.roles(recipient)).map((role) => role.role);
-              const capabilities = capabilitiesFor(roles);
+              const recipientActor = await storedActor(repo, recipient);
+              const capabilities = recipientActor.capabilities;
               if (
                 !capabilities.includes("report.read") ||
+                // A delivery carries the owner's rows, so recipients must reach at least the owner's departments.
+                !scopeCovers(reportScope(recipientActor), reportScope(actor)) ||
                 (datasetOf(reportSpecSchema.parse(row.spec).dataset)?.salary && !hasSalaryAccess(capabilities)) ||
                 (reportSpecSchema
                   .parse(row.spec)
@@ -579,9 +635,14 @@ export function createReportsService(prisma: PrismaClient) {
           const result = await runSpec(actor, reportSpecSchema.parse(row.spec), undefined, row.name, tx);
           const employees = await pay.employees();
           for (const recipient of schedule.recipients) {
-            const roles = (await repo.roles(recipient)).map((role) => role.role);
-            const recipientActor = { employeeId: recipient, roles, capabilities: capabilitiesFor(roles) };
+            const recipientActor = await storedActor(repo, recipient);
             await runSpec(recipientActor, reportSpecSchema.parse(row.spec), 1, undefined, tx);
+            if (!scopeCovers(reportScope(recipientActor), reportScope(actor)))
+              throw new AppError(
+                403,
+                "RECIPIENT_RESTRICTED",
+                "A scheduled recipient cannot access every department in this report.",
+              );
             if (
               hiddenSalaryColumns(reportSpecSchema.parse(row.spec), hasSalaryAccess(recipientActor.capabilities)).length
             )
@@ -606,6 +667,7 @@ export function createReportsService(prisma: PrismaClient) {
             trigger,
             artifact: json({
               ...artifact,
+              scope: reportScope(actor),
               requiresSalary: Boolean(
                 datasetOf(reportSpecSchema.parse(row.spec).dataset)?.salary ||
                 hiddenSalaryColumns(reportSpecSchema.parse(row.spec), false).length,
@@ -669,6 +731,9 @@ export function createReportsService(prisma: PrismaClient) {
         !hasSalaryAccess(actor.capabilities)
       )
         throw new AppError(403, "SALARY_RESTRICTED", "Your current role cannot access this salary artifact.");
+      // The artifact holds the rows of the departments it was built for; a narrower current scope cannot open it.
+      if (!scopeCovers(reportScope(actor), artifactScopeSchema.parse(row.artifact).scope))
+        throw new AppError(404, "NOT_FOUND", "Report artifact not found.");
       const saved = await repository.savedById(row.savedReportId);
       if (!saved) throw new AppError(404, "NOT_FOUND", "The source report was removed.");
       const spec = reportSpecSchema.parse(saved.spec);
@@ -784,7 +849,7 @@ export function createReportsService(prisma: PrismaClient) {
         );
       }
       if (["joiners_leavers", "probation_due", "celebrations", "late_coming"].includes(key)) {
-        const employees = (await people.employees()).filter(
+        const employees = (await reportEmployees(prisma, actor)).filter(
           (employee) =>
             (!filters.department || employee.department.name === filters.department) &&
             (!filters.location || employee.location.name === filters.location),
@@ -860,8 +925,7 @@ export function createReportsService(prisma: PrismaClient) {
     async processDue() {
       const due = await repository.due(new Date());
       for (const row of due) {
-        const roles = (await repository.roles(row.ownerId)).map((role) => role.role);
-        const actor = { employeeId: row.ownerId, roles, capabilities: capabilitiesFor(roles) };
+        const actor = await storedActor(repository, row.ownerId);
         try {
           await service.runSchedule(actor, row.id, `schedule:${row.id}`, "schedule");
         } catch (error) {

@@ -6,6 +6,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, TextInput } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { requestLetterAction } from "@/lib/actions/requests";
@@ -13,7 +14,7 @@ import { letterOptions } from "@/lib/labels";
 
 export function LetterRequestSheet({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const sheet = useDisclosure(defaultOpen);
-  const { submit, pending, fieldError, formError } = useCommand(requestLetterAction, { onSuccess: sheet.hide });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(requestLetterAction, { draftKey: "letter.request", onSuccess: sheet.hide });
   return (
     <>
       <Button onClick={sheet.show}>
@@ -21,7 +22,8 @@ export function LetterRequestSheet({ defaultOpen = false }: { defaultOpen?: bool
         Request a letter
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title="Request a letter" description="HR prepares and signs the letter. You’ll find it here once issued." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="lt-type" label="Letter type" required error={fieldError("type")}>
             <SelectInput id="lt-type" name="type" defaultValue="employment_verification" options={letterOptions} />
           </FormField>

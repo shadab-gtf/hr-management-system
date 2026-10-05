@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, Segmented, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { ConfirmButton, FormSheet } from "@/components/features/admin/form-sheet";
 import { ActionButton } from "@/components/features/lifecycle/action-button";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import {
   addSettlementLineAction,
@@ -20,9 +21,10 @@ import {
 } from "@/lib/actions/lifecycle";
 
 export function PrepareSettlementForm({ options }: { options: { value: string; label: string }[] }) {
-  const { submit, pending, fieldError, formError } = useCommand(prepareSettlementAction);
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(prepareSettlementAction, { draftKey: "settlement.prepare" });
   return (
-    <form onSubmit={submit} className="inline-add" noValidate>
+    <form ref={formRef} onSubmit={submit} className="inline-add" noValidate>
+      <DraftNotice draft={draft} />
       <FormField id="fnf-employee" label="Employee with an open exit" error={fieldError("employeeId")}>
         <SelectInput id="fnf-employee" name="employeeId" options={options} placeholder="Choose…" aria-invalid={Boolean(fieldError("employeeId"))} aria-describedby={describedBy("fnf-employee", fieldError("employeeId"))} />
       </FormField>
@@ -47,7 +49,7 @@ export function RemoveLineButton({ id, lineId }: { id: string; lineId: string })
 
 export function AddLineSheet({ id, version }: { id: string; version: number }) {
   return (
-    <FormSheet action={addSettlementLineAction} title="Add adjustment" description="Bonus, arrears, other earnings or recoveries. A reason is required and audited." trigger="Add line" triggerVariant="secondary" triggerSize="sm" icon="add" submitLabel="Add line">
+    <FormSheet draftKey={`settlement.line:${id}`} action={addSettlementLineAction} title="Add adjustment" description="Bonus, arrears, other earnings or recoveries. A reason is required and audited." trigger="Add line" triggerVariant="secondary" triggerSize="sm" icon="add" submitLabel="Add line">
       {(fieldError) => (
         <>
           <input type="hidden" name="settlementId" value={id} />
@@ -70,7 +72,7 @@ export function AddLineSheet({ id, version }: { id: string; version: number }) {
 
 export function WaiverSheet({ id, version, waived, days }: { id: string; version: number; waived: boolean; days: number }) {
   return (
-    <FormSheet action={setNoticeWaiverAction} title="Notice pay recovery" description={`${days} days short of the notice period. HR may waive the recovery with a reason.`} trigger={waived ? "Reinstate recovery" : "Waive recovery"} triggerVariant="ghost" triggerSize="sm" submitLabel={waived ? "Reinstate recovery" : "Waive recovery"}>
+    <FormSheet draftKey={`settlement.waiver:${id}`} action={setNoticeWaiverAction} title="Notice pay recovery" description={`${days} days short of the notice period. HR may waive the recovery with a reason.`} trigger={waived ? "Reinstate recovery" : "Waive recovery"} triggerVariant="ghost" triggerSize="sm" submitLabel={waived ? "Reinstate recovery" : "Waive recovery"}>
       {(fieldError) => (
         <>
           <input type="hidden" name="settlementId" value={id} />
@@ -91,7 +93,7 @@ export function WaiverSheet({ id, version, waived, days }: { id: string; version
 export function SettlementDecisionSheet({ id, version }: { id: string; version: number }) {
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   return (
-    <FormSheet action={decideSettlementAction} title="Approve settlement" description="Checker step. You can't approve a settlement you prepared." trigger="Review & decide" submitLabel={decision === "approve" ? "Approve settlement" : "Send back"} submitVariant={decision === "reject" ? "danger" : "primary"}>
+    <FormSheet draftKey={`settlement.decide:${id}`} action={decideSettlementAction} title="Approve settlement" description="Checker step. You can't approve a settlement you prepared." trigger="Review & decide" submitLabel={decision === "approve" ? "Approve settlement" : "Send back"} submitVariant={decision === "reject" ? "danger" : "primary"}>
       {(fieldError) => (
         <>
           <input type="hidden" name="settlementId" value={id} />

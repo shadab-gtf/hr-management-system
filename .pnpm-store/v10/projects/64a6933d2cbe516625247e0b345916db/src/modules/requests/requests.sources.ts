@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { can } from "../../core/security/actor.js";
+import type { PrismaClient } from "@prisma/client";
+import { employeeIdsInScope, hasAdministrativeReach } from "../../core/security/scope.js";
 import type { TrackedRequest } from "../../contracts/requests.js";
 import type { WorkQueueItem } from "../../contracts/approval.js";
 import type { CommandContext, TimeRepository } from "../time/time.repository.js";
-import { scopedPeople } from "../time/time.service.js";
 
 const source = z.object({
   reference: z.string().optional(),
@@ -84,16 +84,35 @@ export async function otherTrackedRequests(repo: TimeRepository, ctx: CommandCon
     });
   return result;
 }
-export async function otherWorkQueue(repo: TimeRepository, ctx: CommandContext): Promise<WorkQueueItem[]> {
+export async function otherWorkQueue(
+  db: PrismaClient,
+  repo: TimeRepository,
+  ctx: CommandContext,
+): Promise<WorkQueueItem[]> {
   const result: WorkQueueItem[] = [],
-    people = await scopedPeople(repo, ctx.actor),
-    ids = people.filter((p) => p.id !== ctx.actor.employeeId).map((p) => p.id);
-  const resignations = await repo.talentQueue(["resignation"], can(ctx.actor, "employee.update") ? undefined : ids);
+    actor = ctx.actor;
+  /** Owners of `rows` inside the capability's department scope (BE-003). */
+  const inScope = async (
+    capability: Parameters<typeof hasAdministrativeReach>[1],
+    rows: { ownerId: string | null }[],
+  ) =>
+    employeeIdsInScope(
+      db,
+      actor,
+      capability,
+      rows.flatMap((r) => (r.ownerId && r.ownerId !== actor.employeeId ? [r.ownerId] : [])),
+    );
+  // Resignations: HR sees every review stage for its departments; a manager sees the manager stage for direct reports.
+  const hr = hasAdministrativeReach(actor, "employee.update"),
+    team = new Set((await repo.people({ managerId: actor.employeeId })).map((p) => p.id));
+  const resignations = await repo.talentQueue(["resignation"], hr ? undefined : [...team]);
+  const hrOwners = hr ? await inScope("employee.update", resignations) : new Set<string>();
   const pendingResignations = resignations.filter((r) => {
     const state = source.parse(r.data).state ?? r.state;
-    return can(ctx.actor, "employee.update")
-      ? ["hr_review", "manager_review", "pending_manager", "pending_hr"].includes(state)
-      : ["manager_review", "pending_manager"].includes(state);
+    if (!r.ownerId || r.ownerId === actor.employeeId) return false;
+    if (hrOwners.has(r.ownerId))
+      return ["hr_review", "manager_review", "pending_manager", "pending_hr"].includes(state);
+    return team.has(r.ownerId) && ["manager_review", "pending_manager"].includes(state);
   }).length;
   if (pendingResignations)
     result.push({
@@ -104,9 +123,11 @@ export async function otherWorkQueue(repo: TimeRepository, ctx: CommandContext):
       href: "/admin/offboarding",
       count: pendingResignations,
     });
-  if (can(ctx.actor, "asset.manage")) {
-    const count = (await repo.talentQueue(["asset_request"])).filter(
-      (r) => (source.parse(r.data).state ?? r.state) === "pending",
+  if (hasAdministrativeReach(actor, "asset.manage")) {
+    const rows = await repo.talentQueue(["asset_request"]);
+    const owners = await inScope("asset.manage", rows);
+    const count = rows.filter(
+      (r) => r.ownerId && owners.has(r.ownerId) && (source.parse(r.data).state ?? r.state) === "pending",
     ).length;
     if (count)
       result.push({
@@ -118,9 +139,11 @@ export async function otherWorkQueue(repo: TimeRepository, ctx: CommandContext):
         count,
       });
   }
-  if (can(ctx.actor, "settlement.approve")) {
-    const count = (await repo.talentQueue(["settlement"])).filter(
-      (r) => (source.parse(r.data).state ?? r.state) === "submitted" && r.ownerId !== ctx.actor.employeeId,
+  if (hasAdministrativeReach(actor, "settlement.approve")) {
+    const rows = await repo.talentQueue(["settlement"]);
+    const owners = await inScope("settlement.approve", rows);
+    const count = rows.filter(
+      (r) => r.ownerId && owners.has(r.ownerId) && (source.parse(r.data).state ?? r.state) === "submitted",
     ).length;
     if (count)
       result.push({

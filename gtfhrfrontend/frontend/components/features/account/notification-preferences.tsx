@@ -20,7 +20,7 @@ export function NotificationPreferencesForm({ preferences, topicLabels, strings 
   const [digest, setDigest] = useState<string>(preferences.digest.mode);
   const phoneReady = preferences.phone.verified;
   return (
-    <InlineForm action={saveChannelPreferencesAction} submitLabel={strings.save}>
+    <InlineForm draftKey={"account.notifications"} action={saveChannelPreferencesAction} submitLabel={strings.save}>
       {(fieldError) => (
         <>
           <div className="pref-scroll" role="region" aria-label={strings.topic} tabIndex={0}>

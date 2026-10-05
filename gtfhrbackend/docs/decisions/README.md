@@ -24,3 +24,30 @@ paths. The login rate limiter is in-memory, which is correct for a single instan
 
 **Revisit when.** The API runs on more than one instance (move the rate-limit store to Redis), or payroll/bank fields
 are migrated (add envelope encryption with a managed key).
+
+## BE-003 — Deny-by-default access, super admin and department-wise permissions (2026-10-05)
+
+**Decision.**
+
+- Nobody has access until an administrator grants a role. Creating an employee, converting a candidate or inviting an
+  account grants nothing; the one-time bootstrap creates the first `super_admin`.
+- Roles: `employee` (own records), `manager` (own team), `hr_operator`, `payroll_operator`, `payroll_approver`, and
+  `super_admin` (every capability, organization-wide).
+- HR and payroll grants may be limited to departments (`role_scopes`). An unscoped grant is organization-wide. The
+  employee and manager roles give no administrative reach and never widen a scoped grant.
+- Every request re-reads grants and scopes from the database, so grants and revocations apply to the next request.
+- Enforcement (`src/core/security/scope.ts`): when an HR/payroll/finance capability is used on ANOTHER employee's data,
+  lists are filtered with `employeeScopeWhere`/`employeeIdsInScope` and single records are checked with
+  `assertEmployeeInScope` (out-of-scope answers 404, so other departments cannot be probed). Organization-level actions
+  (policies, settings, payroll runs, statutory filings, audit trail, organization-wide reports) use `requireOrgWide`.
+- Granting (`src/modules/identity/access.rules.ts`): needs `access.manage` over the target's department; nobody changes
+  their own access; only a super admin grants or revokes super admin; everyone else grants only roles they hold and
+  never wider than they hold them; privileged changes need an MFA-verified session; the last super admin cannot be
+  removed or disabled. Every change is audited and notifies the person.
+
+**Why.** Least privilege and separation of duties: a department HR partner should not see other departments'
+records, and no single account should be able to raise its own access. Maker ≠ checker and the self-approval ban
+stay in the services, so even a super admin cannot approve their own payroll or requests.
+
+**Consequences.** Modules must apply the scope helpers on every administrative read and command; integration tests
+cover a department-scoped HR persona (`emp_0013`, Engineering) alongside the organization-wide personas.

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { profileChangeAction } from "@/lib/actions/profile";
 
@@ -21,7 +22,7 @@ const fields = [
 export function ProfileChangeSheet() {
   const [open, setOpen] = useState(false);
   const [field, setField] = useState<string>(fields[0].value);
-  const { submit, pending, fieldError, formError } = useCommand(profileChangeAction, { onSuccess: () => setOpen(false) });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(profileChangeAction, { draftKey: "profile.change", onSuccess: () => setOpen(false) });
   const bank = field === "bankAccount";
   return (
     <>
@@ -30,7 +31,8 @@ export function ProfileChangeSheet() {
         Request a change
       </Button>
       <Sheet open={open} onOpenChange={setOpen} title="Request a profile change" description="Changes apply after verification. You’ll get a reference now." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="pc-field" label="What needs to change?" required>
             <SelectInput id="pc-field" name="field" value={field} onChange={(event) => setField(event.target.value)} options={fields} />
           </FormField>

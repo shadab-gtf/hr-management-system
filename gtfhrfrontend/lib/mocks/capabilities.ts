@@ -1,7 +1,12 @@
-import type { Capability, Role } from "@/types/session";
+import { capabilitySchema, type Capability, type Role } from "@/types/session";
 
-/** Development-only capability fixtures. Live authorization is enforced by the HR API. */
-export const roleCapabilities: Record<Role, Capability[]> = {
+/**
+ * Development-only capability fixtures. Live authorization is enforced by the HR API; this table mirrors
+ * gtfhrbackend/src/core/security/capabilities.ts exactly so demo mode shows the same access.
+ */
+export const roleCapabilities: Record<Role, readonly Capability[]> = {
+  /** Every capability, organization-wide. Maker ≠ checker still applies. */
+  super_admin: capabilitySchema.options,
   employee: [
     "directory.read",
     "profile.read.self",
@@ -25,7 +30,16 @@ export const roleCapabilities: Record<Role, Capability[]> = {
     "asset.read.self",
     "performance.self",
   ],
-  manager: ["approval.decide", "attendance.read.team", "delegation.manage", "timesheet.approve", "roster.manage", "performance.review", "candidate.interview", "project.manage"],
+  manager: [
+    "approval.decide",
+    "attendance.read.team",
+    "delegation.manage",
+    "timesheet.approve",
+    "roster.manage",
+    "performance.review",
+    "candidate.interview",
+    "project.manage",
+  ],
   hr_operator: [
     "employee.read",
     "employee.create",
@@ -47,9 +61,28 @@ export const roleCapabilities: Record<Role, Capability[]> = {
     "recruitment.manage",
     "survey.manage",
     "report.build",
+    "access.manage",
+    "audit.read",
   ],
-  payroll_operator: ["payroll.prepare", "payroll.submit", "report.read", "compensation.manage", "statutory.manage", "settlement.prepare", "report.build"],
-  payroll_approver: ["payroll.approve", "payroll.publish", "payment.export", "report.read", "loan.approve", "statutory.manage", "settlement.approve", "report.build"],
+  payroll_operator: [
+    "payroll.prepare",
+    "payroll.submit",
+    "report.read",
+    "compensation.manage",
+    "statutory.manage",
+    "settlement.prepare",
+    "report.build",
+  ],
+  payroll_approver: [
+    "payroll.approve",
+    "payroll.publish",
+    "payment.export",
+    "report.read",
+    "loan.approve",
+    "statutory.manage",
+    "settlement.approve",
+    "report.build",
+  ],
 };
 
 export function capabilitiesFor(roles: readonly Role[]): Capability[] {

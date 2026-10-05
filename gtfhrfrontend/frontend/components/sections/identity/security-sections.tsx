@@ -5,6 +5,7 @@ import { Alert, KeyValueList } from "@/components/ui/display";
 import { PageHeader } from "@/components/ui/page-header";
 import { MfaEnrollment, RemoveFactorButton } from "@/components/features/identity/mfa-controls";
 import { signOutEverywhereAction } from "@/lib/actions/session";
+import { SignOutForm } from "@/components/features/drafts/sign-out-form";
 import { formatDateTime } from "@/lib/utils/format";
 import { roleLabels, type SecurityOverview } from "@/types/identity";
 
@@ -50,12 +51,12 @@ export function SecuritySection({ overview, enroll }: { overview: SecurityOvervi
         <Card labelledBy="security-sessions">
           <CardHeader id="security-sessions" title="Sessions" description="Signs you out on every device, including this one." />
           <CardBody>
-            <form action={signOutEverywhereAction}>
+            <SignOutForm action={signOutEverywhereAction}>
               <button type="submit" className="button button--secondary" disabled={demo}>
                 <AppIcon name="logout" size={20} />
                 Sign out everywhere
               </button>
-            </form>
+            </SignOutForm>
           </CardBody>
         </Card>
       </div>

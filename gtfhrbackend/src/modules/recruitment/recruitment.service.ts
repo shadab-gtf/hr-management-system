@@ -2,6 +2,12 @@ import { requireValue } from "../talent/talent.schema.js";
 import { createHash } from "node:crypto";
 import { AuthorizationError, NotFoundError } from "../../core/errors/index.js";
 import { can } from "../../core/security/actor.js";
+import { hasAdministrativeReach } from "../../core/security/scope.js";
+import {
+  assertDepartmentRecordInScope,
+  assertDepartmentTargetInScope,
+  departmentNameScope,
+} from "../talent/talent.scope.js";
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import * as r from "../../contracts/recruitment.js";
@@ -23,7 +29,7 @@ function visibleInterview(interview: r.Interview, call: TalentCall): r.Interview
   const actor = actorOf(call);
   const isPanelist = interview.panel.some((p) => p.person.id === actor.employeeId);
   const submitted = interview.scorecards.some((s) => s.panelist.id === actor.employeeId);
-  const visible = isPanelist ? submitted : can(actor, "recruitment.manage");
+  const visible = isPanelist ? submitted : hasAdministrativeReach(actor, "recruitment.manage");
   const blocked = !isPanelist
     ? "Only assigned panelists can submit."
     : submitted
@@ -43,7 +49,13 @@ function visibleInterview(interview: r.Interview, call: TalentCall): r.Interview
     submitBlockedReason: blocked,
   };
 }
-function candidateView(candidate: s.CandidateRecord, job: r.JobDetail, call: TalentCall): r.CandidateDetail {
+/** `approvable(department)`: whether the offer's department is inside the actor's payroll.approve scope (BE-003). */
+function candidateView(
+  candidate: s.CandidateRecord,
+  job: r.JobDetail,
+  call: TalentCall,
+  approvable: (department: string) => boolean,
+): r.CandidateDetail {
   const c = { ...candidate };
   const due = !c.erased && c.stage !== "hired" && c.retainUntil <= todayInOrgZone();
   const blocked = c.erased
@@ -67,6 +79,7 @@ function candidateView(candidate: s.CandidateRecord, job: r.JobDetail, call: Tal
           ...c.offer,
           canApprove:
             can(actorOf(call), "payroll.approve") &&
+            approvable(c.offer.department) &&
             c.offer.createdBy.id !== actorOf(call).employeeId &&
             c.offer.state === "pending_approval",
         }
@@ -90,6 +103,19 @@ export function createRecruitmentService(prisma: PrismaClient) {
       repo.list("requisition", r.requisitionSchema),
     ]);
     return { jobs, candidates, requisitions };
+  }
+  /**
+   * BE-003: recruitment records belong to a department (job/requisition department name; candidates through their
+   * job). A department-scoped recruiter sees and acts only on its departments; offers are approved within the
+   * approver's payroll.approve scope (offer department).
+   */
+  async function scopes(call: TalentCall, repo: TalentRepository = unit.read) {
+    const actor = actorOf(call);
+    const departments = await repo.departments();
+    return {
+      recruit: departmentNameScope(actor, "recruitment.manage", departments),
+      approve: departmentNameScope(actor, "payroll.approve", departments),
+    };
   }
   function jobView(job: r.JobDetail, candidates: s.CandidateRecord[]): r.JobDetail {
     const mine = candidates.filter((c) => c.jobId === job.id);
@@ -130,6 +156,8 @@ export function createRecruitmentService(prisma: PrismaClient) {
       if (!can(actor, "recruitment.manage")) throw new AuthorizationError("Recruitment access is restricted.");
       return unit.command(actor.employeeId, undefined, "resume_download", async (repo) => {
         const candidate = await repo.get(idOf(call, "candidateId"), "candidate", s.candidateRecord);
+        const job = await repo.get(candidate.jobId, "job", r.jobDetailSchema);
+        assertDepartmentRecordInScope((await scopes(call, repo)).recruit(job.department));
         if (candidate.erased || !candidate.resumeFileId || !candidate.resume)
           throw new NotFoundError("No resume is available.");
         const row = await repo.workspace().require(candidate.resumeFileId, "resume");
@@ -150,17 +178,31 @@ export function createRecruitmentService(prisma: PrismaClient) {
         };
       });
     }
-    const { jobs, candidates, requisitions } = await all();
-    if (action === "public_jobs") return jobs.filter(isPublic).map(publicJob);
+    const everything = await all();
+    if (action === "public_jobs") return everything.jobs.filter(isPublic).map(publicJob);
     if (action === "public_job") {
-      const job = jobs.find((j) => j.id === call.params.jobId && isPublic(j));
+      const job = everything.jobs.find((j) => j.id === call.params.jobId && isPublic(j));
       ensure(job, "JOB_UNAVAILABLE", "This opening is unavailable.");
       return publicJob(job);
     }
     const actor = actorOf(call);
+    const scope = await scopes(call);
+    const administrative = ["stats", "jobs", "job", "requisitions", "candidates", "candidate", "offer"].includes(
+      action,
+    );
+    // Administrative views are limited to the recruiter's departments; self-service views keep the full set and
+    // filter by the actor's own involvement below.
+    const jobs = administrative ? everything.jobs.filter((j) => scope.recruit(j.department)) : everything.jobs;
+    const candidates = administrative
+      ? everything.candidates.filter((c) => jobs.some((j) => j.id === c.jobId))
+      : everything.candidates;
+    const requisitions = administrative
+      ? everything.requisitions.filter((q) => scope.recruit(q.department))
+      : everything.requisitions;
     if (action === "jobs") return jobs.map((j) => jobView(j, candidates));
     if (action === "job") {
       const job = jobs.find((j) => j.id === call.params.jobId);
+      if (!job && everything.jobs.some((j) => j.id === call.params.jobId)) assertDepartmentRecordInScope(false);
       ensure(job, "JOB_NOT_FOUND", "The job was not found.");
       return jobView(job, candidates);
     }
@@ -180,11 +222,18 @@ export function createRecruitmentService(prisma: PrismaClient) {
             (!call.query.source || c.source === call.query.source) &&
             (!call.query.retentionDue || (!c.erased && c.stage !== "hired" && c.retainUntil <= todayInOrgZone())),
         )
-        .map((c) => candidateView(c, requireValue(jobs.find((j) => j.id === c.jobId)), call));
+        .map((c) => candidateView(c, requireValue(jobs.find((j) => j.id === c.jobId)), call, scope.approve));
     if (action === "candidate" || action === "offer") {
       const candidate = candidates.find((c) => c.id === call.params.candidateId);
+      if (!candidate && everything.candidates.some((c) => c.id === call.params.candidateId))
+        assertDepartmentRecordInScope(false);
       ensure(candidate, "CANDIDATE_NOT_FOUND", "The candidate was not found.");
-      const view = candidateView(candidate, requireValue(jobs.find((j) => j.id === candidate.jobId)), call);
+      const view = candidateView(
+        candidate,
+        requireValue(jobs.find((j) => j.id === candidate.jobId)),
+        call,
+        scope.approve,
+      );
       if (action === "offer") {
         ensure(view.offer, "NO_OFFER", "No offer exists.");
         return view.offer;
@@ -229,10 +278,13 @@ export function createRecruitmentService(prisma: PrismaClient) {
           .flatMap((c) => (c.offer ? [c.offer] : []))
           .filter(
             (o) =>
-              can(actor, "payroll.approve") && o.state === "pending_approval" && o.createdBy.id !== actor.employeeId,
+              can(actor, "payroll.approve") &&
+              scope.approve(o.department) &&
+              o.state === "pending_approval" &&
+              o.createdBy.id !== actor.employeeId,
           )
           .map((o) => ({ ...o, canApprove: true })),
-        canApproveOffers: can(actor, "payroll.approve"),
+        canApproveOffers: hasAdministrativeReach(actor, "payroll.approve"),
       };
     const accepted = candidates.filter((c) => c.offer?.state === "accepted").length;
     const decided = candidates.filter((c) => c.offer && ["accepted", "declined"].includes(c.offer.state)).length;
@@ -273,6 +325,8 @@ export function createRecruitmentService(prisma: PrismaClient) {
     return unit.command(call.actor?.employeeId ?? null, call.key, action, async (repo) => {
       const self = call.actor ? await repo.person(call.actor.employeeId) : null;
       const { jobs, candidates } = await all(repo);
+      // Public applications have no actor; every authenticated recruitment command is checked against BE-003 scope.
+      const scope = call.actor ? await scopes(call, repo) : null;
       if (action === "requisition") {
         const input = s.requisitionInput.parse(body);
         ensure(self, "AUTHENTICATION_REQUIRED", "Sign in first.");
@@ -311,6 +365,7 @@ export function createRecruitmentService(prisma: PrismaClient) {
       if (action === "requisition_decision") {
         const input = s.decisionInput.parse(body);
         const req = await repo.get(idOf(call, "requisitionId"), "requisition", r.requisitionSchema);
+        assertDepartmentRecordInScope(!!scope?.recruit(req.department));
         assertVersion(req.version, call.version);
         ensure(self && self.id !== req.raisedBy.id, "SELF_APPROVAL", "An independent approver must decide.");
         ensure(req.state === "pending", "ALREADY_DECIDED", "This requisition was decided.");
@@ -360,6 +415,8 @@ export function createRecruitmentService(prisma: PrismaClient) {
         const input = s.jobInput.parse(body);
         const id = call.params.jobId ?? input.jobId ?? newId("job");
         const old = input.jobId || call.params.jobId ? await repo.get(id, "job", r.jobDetailSchema) : null;
+        if (old) assertDepartmentRecordInScope(!!scope?.recruit(old.department));
+        assertDepartmentTargetInScope(!!scope?.recruit(input.department));
         if (old) {
           assertVersion(old.version, call.version ?? input.expectedVersion);
           ensure(!["closed", "filled"].includes(old.state), "JOB_CLOSED", "Closed jobs cannot be edited.");
@@ -422,6 +479,7 @@ export function createRecruitmentService(prisma: PrismaClient) {
       if (action === "job_state") {
         const input = z.object({ to: r.jobStateSchema.extract(["published", "on_hold", "closed"]) }).parse(body);
         const job = await repo.get(idOf(call, "jobId"), "job", r.jobDetailSchema);
+        assertDepartmentRecordInScope(!!scope?.recruit(job.department));
         assertVersion(job.version, call.version);
         const allowed = {
           published: ["draft", "on_hold"],
@@ -455,6 +513,8 @@ export function createRecruitmentService(prisma: PrismaClient) {
               ? s.applyInput.parse(body)
               : s.referralInput.parse(body);
         const job = jobs.find((j) => j.id === (call.params.jobId ?? input.jobId));
+        // Recruiter-entered candidates only for jobs in the recruiter's departments (referrals/applications are open).
+        if (action === "candidate" && job) assertDepartmentRecordInScope(!!scope?.recruit(job.department));
         ensure(
           job && job.state === "published" && (action !== "application" || job.publishToCareers),
           "JOB_UNAVAILABLE",
@@ -488,21 +548,19 @@ export function createRecruitmentService(prisma: PrismaClient) {
         if (input.resume && resumeFileId) {
           const bytes = Buffer.from(input.resume.contentBase64, "base64");
           const owner = await repo.person(job.hiringManagerId);
-          await repo
-            .workspace()
-            .create({
+          await repo.workspace().create({
+            id: resumeFileId,
+            kind: "resume",
+            ownerId: owner.id,
+            parentId: id,
+            state: "scanning",
+            data: {
+              ...r.resumeMetaSchema.parse(input.resume),
               id: resumeFileId,
-              kind: "resume",
-              ownerId: owner.id,
-              parentId: id,
-              state: "scanning",
-              data: {
-                ...r.resumeMetaSchema.parse(input.resume),
-                id: resumeFileId,
-                uploadedAt: now(),
-                scanState: "scanning",
-              },
-            });
+              uploadedAt: now(),
+              scanState: "scanning",
+            },
+          });
           await repo
             .workspace()
             .saveFile(
@@ -583,6 +641,10 @@ export function createRecruitmentService(prisma: PrismaClient) {
       );
       ensure(candidate, "CANDIDATE_NOT_FOUND", "Candidate was not found.");
       const job = requireValue(jobs.find((j) => j.id === candidate.jobId));
+      // Scorecards are panelist self-service; offer approval is scoped by the approver's payroll.approve reach.
+      if (action === "offer_approval")
+        assertDepartmentRecordInScope(!!candidate.offer && !!scope?.approve(candidate.offer.department));
+      else if (action !== "scorecard") assertDepartmentRecordInScope(!!scope?.recruit(job.department));
       ensure(!candidate.erased, "CANDIDATE_ERASED", "This candidate's personal data was erased.");
       assertVersion(call.params.offerId ? requireValue(candidate.offer).version : candidate.version, call.version);
       let result: unknown = { id: candidate.id };
@@ -615,7 +677,7 @@ export function createRecruitmentService(prisma: PrismaClient) {
         candidate.notes.push({ id: newId("note"), author: personRef(self), body: input.body, at: now() });
       }
       if (action === "erase") {
-        const view = candidateView(candidate, job, call);
+        const view = candidateView(candidate, job, call, () => false);
         ensure(view.permissions.canErase, "ERASURE_BLOCKED", view.permissions.eraseBlockedReason ?? "Cannot erase.");
         candidate.name = "Erased candidate";
         candidate.email = null;
@@ -763,6 +825,7 @@ export function createRecruitmentService(prisma: PrismaClient) {
           "Check joining date and annual CTC.",
         );
         ensure(self, "AUTHENTICATION_REQUIRED", "Sign in first.");
+        assertDepartmentTargetInScope(!!scope?.recruit(input.department));
         const manager = await repo.person(input.managerId);
         ensure(manager.status !== "exited", "INACTIVE_MANAGER", "Choose an active manager.");
         ensure(
@@ -833,6 +896,7 @@ export function createRecruitmentService(prisma: PrismaClient) {
           "OFFER_NOT_CONVERTIBLE",
           "This offer is not eligible for conversion.",
         );
+        assertDepartmentTargetInScope(!!scope?.recruit(offer.department));
         ensure(
           candidates.filter((c) => c.jobId === job.id && c.stage === "hired").length < job.openings,
           "NO_OPENINGS",

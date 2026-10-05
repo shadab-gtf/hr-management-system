@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { FormSheet } from "@/components/features/admin/form-sheet";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { archiveAnnouncementAction, publishAnnouncementAction, toggleOnboardingTaskAction } from "@/lib/actions/admin";
 import type { Announcement } from "@/types/workplace";
@@ -83,9 +84,10 @@ function toLocalInput(instant: string) {
 
 export function AnnouncementComposer({ departments }: { departments: string[] }) {
   const form = useRef<HTMLFormElement>(null);
-  const { submit, pending, fieldError, formError } = useCommand(publishAnnouncementAction, { onSuccess: () => form.current?.reset() });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(publishAnnouncementAction, { draftKey: "announcement.new", form, onSuccess: () => form.current?.reset() });
   return (
-    <form ref={form} onSubmit={submit} className="form" noValidate>
+    <form ref={formRef} onSubmit={submit} className="form" noValidate>
+      <DraftNotice draft={draft} />
       <AnnouncementFields prefix="an" departments={departments} fieldError={fieldError} />
       {formError && <Alert tone="danger" live>{formError}</Alert>}
       <div className="sheet-actions">
@@ -100,7 +102,7 @@ export function AnnouncementComposer({ departments }: { departments: string[] })
 
 export function EditAnnouncementSheet({ announcement, departments }: { announcement: Announcement; departments: string[] }) {
   return (
-    <FormSheet action={publishAnnouncementAction} title="Edit announcement" description={announcement.status === "scheduled" ? "Scheduled — you can still change the time." : "Published items keep their original publish time."} trigger="Edit" triggerVariant="ghost" triggerSize="sm" submitLabel="Save changes">
+    <FormSheet draftKey={`announcement.edit:${announcement.id}`} action={publishAnnouncementAction} title="Edit announcement" description={announcement.status === "scheduled" ? "Scheduled — you can still change the time." : "Published items keep their original publish time."} trigger="Edit" triggerVariant="ghost" triggerSize="sm" submitLabel="Save changes">
       {(fieldError) => <AnnouncementFields prefix={`an-${announcement.id}`} departments={departments} fieldError={fieldError} announcement={announcement} />}
     </FormSheet>
   );

@@ -18,8 +18,8 @@ export function createEmployeeController(service: EmployeeService) {
       sendData(response, await service.facets(currentActor(request)));
     },
 
-    formOptions: async (_request, response) => {
-      sendData(response, await service.formOptions());
+    formOptions: async (request, response) => {
+      sendData(response, await service.formOptions(currentActor(request)));
     },
 
     create: async (request, response) => {

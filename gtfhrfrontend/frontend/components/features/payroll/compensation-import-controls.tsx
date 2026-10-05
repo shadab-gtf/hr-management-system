@@ -7,6 +7,7 @@ import { AppIcon } from "@/components/ui/app-icon";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, TextArea } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { decideCompensationAction, discardCompensationAction, uploadCompensationAction } from "@/lib/actions/imports";
 
@@ -46,9 +47,10 @@ export function CompensationUploadForm() {
 /** Maker submits; an independent approver approves or rejects (server enforces who). */
 export function CompensationDecision({ batchId, can, importable }: { batchId: string; can: { submit: boolean; approve: boolean; discard: boolean }; importable: number }) {
   const [rejecting, setRejecting] = useState(false);
-  const { submit, pending, fieldError, formError } = useCommand(decideCompensationAction);
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(decideCompensationAction, { draftKey: `compensation.decide:${batchId}` });
   return (
-    <form onSubmit={submit} className="stack" noValidate>
+    <form ref={formRef} onSubmit={submit} className="stack" noValidate>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="batchId" value={batchId} />
       {rejecting && (
         <FormField id="cmp-note" label="Reason for rejecting" required error={fieldError("note")}>

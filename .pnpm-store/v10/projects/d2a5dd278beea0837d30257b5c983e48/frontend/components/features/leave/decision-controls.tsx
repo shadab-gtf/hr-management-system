@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, TextArea, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import type { ActionResult } from "@/types/action";
 
@@ -13,7 +14,7 @@ type FormAction = (prev: ActionResult, formData: FormData) => Promise<ActionResu
 /** Approve / reject pair for one record; rejecting needs a reason. Version guards stale decisions. */
 export function DecisionControls({ action, id, version, subject, approveLabel = "Approve" }: { action: FormAction; id: string; version: number; subject: string; approveLabel?: string }) {
   const [decision, setDecision] = useState<"approve" | "reject" | null>(null);
-  const { submit, pending, fieldError, formError } = useCommand(action, { onSuccess: () => setDecision(null) });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(action, { draftKey: `decision:${id}`, onSuccess: () => setDecision(null) });
   const noteId = `note-${id}`;
   return (
     <>
@@ -26,7 +27,8 @@ export function DecisionControls({ action, id, version, subject, approveLabel = 
         </Button>
       </span>
       <Sheet open={decision !== null} onOpenChange={(open) => !open && setDecision(null)} title={decision === "reject" ? "Reject request" : `${approveLabel} request`} description={subject} dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="version" value={version} />
           <input type="hidden" name="decision" value={decision ?? "approve"} />

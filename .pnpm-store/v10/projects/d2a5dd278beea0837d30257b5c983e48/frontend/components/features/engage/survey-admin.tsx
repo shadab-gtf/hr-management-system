@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { addQuestionAction, moveQuestionAction, saveSurveyAction } from "@/lib/actions/engage";
@@ -63,7 +64,7 @@ function SurveyFields({ fieldError, departments, today, survey }: { fieldError: 
 export function NewSurveySheet({ departments, today }: { departments: string[]; today: string }) {
   const router = useRouter();
   const sheet = useDisclosure();
-  const { submit, pending, fieldError, formError } = useCommand(saveSurveyAction, {
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(saveSurveyAction, { draftKey: "survey.new",
     toast: false,
     onSuccess: (result) => {
       sheet.hide();
@@ -78,7 +79,8 @@ export function NewSurveySheet({ departments, today }: { departments: string[]; 
         New survey
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title="New survey" description="Starts as a draft. Add questions in the builder, then publish." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <SurveyFields fieldError={fieldError} departments={departments} today={today} />
           {formError && (
             <Alert tone="danger" live>
@@ -93,9 +95,10 @@ export function NewSurveySheet({ departments, today }: { departments: string[]; 
 }
 
 export function SurveySettingsForm({ survey, departments, today }: { survey: SurveyDetail; departments: string[]; today: string }) {
-  const { submit, pending, fieldError, formError } = useCommand(saveSurveyAction);
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(saveSurveyAction, { draftKey: `survey.settings:${survey.id}` });
   return (
-    <form onSubmit={submit} className="form" noValidate>
+    <form ref={formRef} onSubmit={submit} className="form" noValidate>
+      <DraftNotice draft={draft} />
       <SurveyFields fieldError={fieldError} departments={departments} today={today < survey.opensOn ? today : survey.opensOn} survey={survey} />
       {formError && (
         <Alert tone="danger" live>
@@ -114,7 +117,7 @@ export function SurveySettingsForm({ survey, departments, today }: { survey: Sur
 export function AddQuestionForm({ surveyId }: { surveyId: string }) {
   const form = useRef<HTMLFormElement>(null);
   const [kind, setKind] = useState<SurveyQuestionKind>("rating");
-  const { submit, pending, fieldError, formError } = useCommand(addQuestionAction, {
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(addQuestionAction, { draftKey: `survey.question:${surveyId}`, form,
     onSuccess: () => {
       form.current?.reset();
       setKind("rating");
@@ -122,7 +125,8 @@ export function AddQuestionForm({ surveyId }: { surveyId: string }) {
   });
   const choice = kind === "single" || kind === "multiple";
   return (
-    <form ref={form} onSubmit={submit} className="form" noValidate>
+    <form ref={formRef} onSubmit={submit} className="form" noValidate>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="surveyId" value={surveyId} />
       <div className="form-row">
         <FormField id="q-kind" label="Question type" required>

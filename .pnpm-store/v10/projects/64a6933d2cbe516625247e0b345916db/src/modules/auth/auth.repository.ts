@@ -46,11 +46,25 @@ export function createAuthRepository(prisma: PrismaClient) {
         select: { id: true, name: true, workEmail: true },
       });
     },
-    signIn(employeeId: string) { return prisma.userAccount.update({ where: { employeeId }, data: { lastSignInAt: new Date() } }); },
-    actorRecord(employeeId: string) {
-      return prisma.employee.findUnique({ where: { id: employeeId }, select: { status: true, account: { select: { disabledAt: true } }, roleAssignments: { where: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { role: true } } } });
+    signIn(employeeId: string) {
+      return prisma.userAccount.update({ where: { employeeId }, data: { lastSignInAt: new Date() } });
     },
-    security(employeeId: string) { return prisma.accountSecurity.findUnique({ where: { employeeId } }); },
+    actorRecord(employeeId: string) {
+      return prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: {
+          status: true,
+          account: { select: { disabledAt: true } },
+          roleAssignments: {
+            where: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+            select: { role: true, departments: { select: { departmentId: true } } },
+          },
+        },
+      });
+    },
+    security(employeeId: string) {
+      return prisma.accountSecurity.findUnique({ where: { employeeId } });
+    },
   };
 }
 

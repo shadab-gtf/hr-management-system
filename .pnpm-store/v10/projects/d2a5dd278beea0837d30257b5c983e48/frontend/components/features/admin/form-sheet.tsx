@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import type { ActionResult } from "@/types/action";
@@ -16,6 +17,8 @@ type FormAction = (prev: ActionResult, formData: FormData) => Promise<ActionResu
 /**
  * Trigger button + sheet + form for one HR admin command. Field values survive
  * validation errors (useCommand); the sheet closes only on success.
+ * `draftKey` keeps typed input across refresh / close (useFormDraft); include the
+ * record id for edit forms. Omit it for forms that must never be drafted.
  */
 export function FormSheet({
   action,
@@ -28,6 +31,7 @@ export function FormSheet({
   submitLabel,
   pendingLabel = "Saving…",
   submitVariant = "primary",
+  draftKey,
   children,
 }: {
   action: FormAction;
@@ -40,10 +44,11 @@ export function FormSheet({
   submitLabel: string;
   pendingLabel?: string;
   submitVariant?: "primary" | "danger";
+  draftKey?: string | null;
   children: (fieldError: (name: string) => string | undefined) => ReactNode;
 }) {
   const sheet = useDisclosure();
-  const { submit, pending, fieldError, formError } = useCommand(action, { onSuccess: sheet.hide });
+  const { submit, pending, fieldError, formError, formRef, draft } = useCommand(action, { onSuccess: sheet.hide, draftKey });
   return (
     <>
       <Button variant={triggerVariant} size={triggerSize} onClick={sheet.show}>
@@ -51,7 +56,8 @@ export function FormSheet({
         {trigger}
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title={title} {...(description ? { description } : {})} dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           {children(fieldError)}
           {formError && (
             <Alert tone="danger" live>
@@ -66,10 +72,21 @@ export function FormSheet({
 }
 
 /** Inline settings form (no sheet) with a single save button. */
-export function InlineForm({ action, submitLabel, children }: { action: FormAction; submitLabel: string; children: (fieldError: (name: string) => string | undefined) => ReactNode }) {
-  const { submit, pending, fieldError, formError } = useCommand(action);
+export function InlineForm({
+  action,
+  submitLabel,
+  draftKey,
+  children,
+}: {
+  action: FormAction;
+  submitLabel: string;
+  draftKey?: string | null;
+  children: (fieldError: (name: string) => string | undefined) => ReactNode;
+}) {
+  const { submit, pending, fieldError, formError, formRef, draft } = useCommand(action, { draftKey });
   return (
-    <form onSubmit={submit} className="form" noValidate>
+    <form ref={formRef} onSubmit={submit} className="form" noValidate>
+      <DraftNotice draft={draft} />
       {children(fieldError)}
       {formError && (
         <Alert tone="danger" live>

@@ -54,7 +54,8 @@ export function createAuthService(prisma: PrismaClient) {
     async currentAccount(actor: AuthenticatedActor) {
       const account = await repository.findAccount(actor.employeeId);
       if (!account) throw new AuthenticationError("INVALID_TOKEN", "The access token is invalid.");
-      return { ...account, roles: actor.roles };
+      // Live roles and capabilities (re-read on every request); empty for an account nobody has granted access yet.
+      return { ...account, roles: actor.roles, capabilities: actor.capabilities };
     },
   };
 }

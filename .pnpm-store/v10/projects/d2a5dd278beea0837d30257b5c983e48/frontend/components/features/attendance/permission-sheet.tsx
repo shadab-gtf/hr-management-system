@@ -6,6 +6,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { requestPermissionAction } from "@/lib/actions/requests";
@@ -13,7 +14,7 @@ import { requestPermissionAction } from "@/lib/actions/requests";
 /** Short absence during a working day (up to 3 hours, twice a month — synthetic policy). */
 export function PermissionSheet({ today, defaultOpen = false }: { today: string; defaultOpen?: boolean }) {
   const sheet = useDisclosure(defaultOpen);
-  const { submit, pending, fieldError, formError } = useCommand(requestPermissionAction, { onSuccess: sheet.hide });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(requestPermissionAction, { draftKey: "attendance.permission", onSuccess: sheet.hide });
   return (
     <>
       <Button variant="secondary" onClick={sheet.show}>
@@ -21,7 +22,8 @@ export function PermissionSheet({ today, defaultOpen = false }: { today: string;
         Request permission
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title="Request permission" description="Step out for up to 3 hours. Two permissions per month." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="pm-date" label="Date" required error={fieldError("date")}>
             <TextInput id="pm-date" name="date" type="date" min={today} defaultValue={today} aria-invalid={Boolean(fieldError("date"))} aria-describedby={describedBy("pm-date", fieldError("date"))} />
           </FormField>

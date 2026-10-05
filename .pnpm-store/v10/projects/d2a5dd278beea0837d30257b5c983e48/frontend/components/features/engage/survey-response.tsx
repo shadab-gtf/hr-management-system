@@ -6,6 +6,7 @@ import { Alert } from "@/components/ui/display";
 import { TextArea } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { respondSurveyAction } from "@/lib/actions/engage";
@@ -82,7 +83,7 @@ function Question({ question, index, error }: { question: SurveyQuestion; index:
 
 export function SurveyResponseSheet({ survey }: { survey: SurveyForYou }) {
   const sheet = useDisclosure();
-  const { submit, pending, fieldError, state } = useCommand(respondSurveyAction, { onSuccess: sheet.hide });
+  const { formRef, draft, submit, pending, fieldError, state } = useCommand(respondSurveyAction, { draftKey: `survey.response:${survey.id}`, onSuccess: sheet.hide });
   const message = state.status === "error" ? state.message : undefined;
   return (
     <>
@@ -91,7 +92,8 @@ export function SurveyResponseSheet({ survey }: { survey: SurveyForYou }) {
         Respond
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title={survey.title} description={survey.description} dismissible={!pending} size="lg">
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <input type="hidden" name="surveyId" value={survey.id} />
           {survey.anonymous && (
             <Alert tone="info" title="Anonymous survey">

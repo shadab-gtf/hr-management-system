@@ -2,7 +2,7 @@ export const SERVICE_NAME = "gtf-hr-api";
 export const API_PREFIX = "/api/v1";
 export const REQUEST_BODY_LIMIT = "1mb";
 
-export const ROLES = ["employee", "manager", "hr_operator", "payroll_operator", "payroll_approver"] as const;
+export const ROLES = ["employee", "manager", "hr_operator", "payroll_operator", "payroll_approver", "super_admin"] as const;
 export type ApiRole = (typeof ROLES)[number];
 
 export const EMPLOYMENT_STATUSES = ["onboarding", "active", "on_leave", "notice", "exited"] as const;

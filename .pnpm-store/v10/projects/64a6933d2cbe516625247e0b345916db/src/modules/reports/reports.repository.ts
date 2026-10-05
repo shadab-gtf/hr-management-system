@@ -19,6 +19,7 @@ export function createReportsRepository(db: PayDb) {
     roles: (employeeId: string) =>
       db.roleAssignment.findMany({
         where: { employeeId, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+        include: { departments: { select: { departmentId: true } } },
       }),
     attendance: (from: string, to: string) => db.timeAttendance.findMany({ where: { date: { gte: from, lte: to } } }),
     workflows: (kind: string) => db.timeWorkflow.findMany({ where: { kind } }),

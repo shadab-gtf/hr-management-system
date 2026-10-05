@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert, Meter, StatusBadge } from "@/components/ui/display";
 import { FormField, Segmented, TextInput } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { saveDeclarationAction } from "@/lib/actions/salary";
 import { formatMoney } from "@/lib/utils/format";
@@ -32,7 +33,7 @@ export function DeclarationForm({ declaration }: { declaration: TaxDeclaration }
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(declaration.sections.flatMap((section) => section.items.map((item) => [item.id, plain(item.declared.amount)]))),
   );
-  const { submit, pending, fieldError, formError } = useCommand(saveDeclarationAction);
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(saveDeclarationAction, { draftKey: `tax.declaration:${declaration.financialYear}` });
   const locked = !declaration.window.open || declaration.status === "locked";
   const totals = useMemo(
     () => Object.fromEntries(declaration.sections.map((section) => [section.code, section.items.reduce((sum, item) => sum + toPaise(values[item.id] ?? ""), 0)])),
@@ -41,7 +42,8 @@ export function DeclarationForm({ declaration }: { declaration: TaxDeclaration }
   const oldRegime = regime === "old";
 
   return (
-    <form onSubmit={submit} className="stack" noValidate>
+    <form ref={formRef} onSubmit={submit} className="stack" noValidate>
+      <DraftNotice draft={draft} />
       <Card labelledBy="regime-heading">
         <CardHeader id="regime-heading" title="Tax regime" description="The new regime has lower rates but no deductions. You can switch until the window closes." />
         <CardBody className="stack">

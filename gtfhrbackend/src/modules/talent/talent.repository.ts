@@ -5,7 +5,11 @@ import { employeeCodeFor, nextEmployeeId, nextReference, newId } from "../../cor
 import type { TransactionClient } from "../../core/database/transaction.js";
 import { NotFoundError, ConflictError } from "../../core/errors/index.js";
 import { assertVersion } from "../../core/http/request-context.js";
+import type { AuthenticatedActor } from "../../core/security/actor.js";
+import type { Capability } from "../../core/security/capabilities.js";
+import { assertEmployeeInScope } from "../../core/security/scope.js";
 import { recordAuditEvent } from "../audit-logs/audit.repository.js";
+import { assertEmployeeInAnyScope } from "./talent.scope.js";
 import { todayInOrgZone } from "../../utils/date.js";
 import { createPayrollRepository } from "../payroll/payroll.repository.js";
 import { createTimeRepository } from "../time/time.repository.js";
@@ -53,6 +57,12 @@ export function talentRepository(db: TransactionClient, domain: TalentDomain) {
     async remove(id: string, kind: string) {
       const result = await db.talentRecord.deleteMany({ where: { id, domain, kind } });
       if (!result.count) throw new NotFoundError("This record was not found.", "RECORD_NOT_FOUND");
+    },
+    /** BE-003: 404 unless the employee is inside the actor's scope for the capability (any of the capabilities). */
+    assertInScope(actor: AuthenticatedActor, capability: Capability | readonly Capability[], employeeId: string) {
+      return typeof capability === "string"
+        ? assertEmployeeInScope(db, actor, capability, employeeId)
+        : assertEmployeeInAnyScope(db, actor, capability, employeeId);
     },
     people() {
       return db.employee.findMany({
@@ -125,9 +135,7 @@ export function talentRepository(db: TransactionClient, domain: TalentDomain) {
           status: "onboarding",
         },
       });
-      await db.roleAssignment.create({
-        data: { employeeId: id, role: "employee", reason: "Accepted recruitment offer" },
-      });
+      // Deny by default (BE-003): the new joiner gets access only when an administrator grants it.
       return { employeeId: id, code };
     },
     reference(prefix: string) {

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppIcon } from "@/components/ui/app-icon";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { commentAction, deletePostAction, reactAction } from "@/lib/actions/engage";
 import { cn } from "@/lib/utils/cn";
@@ -25,7 +26,7 @@ export function PostInteractions({ post }: { post: Post }) {
   const [, startTransition] = useTransition();
   const [commenting, setCommenting] = useState(false);
   const form = useRef<HTMLFormElement>(null);
-  const { submit, pending, fieldError } = useCommand(commentAction, { toast: false, onSuccess: () => form.current?.reset() });
+  const { formRef, draft, submit, pending, fieldError } = useCommand(commentAction, { draftKey: `post.comment:${post.id}`, form, toast: false, onSuccess: () => form.current?.reset() });
 
   return (
     <>
@@ -77,7 +78,8 @@ export function PostInteractions({ post }: { post: Post }) {
             </p>
           ))}
           {commenting && (
-            <form ref={form} onSubmit={submit} className="comment-form" noValidate>
+            <form ref={formRef} onSubmit={submit} className="comment-form" noValidate>
+              <DraftNotice draft={draft} />
               <input type="hidden" name="postId" value={post.id} />
               <label className="sr-only" htmlFor={`c-${post.id}`}>
                 Write a comment

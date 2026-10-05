@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { requestLoanAction } from "@/lib/actions/salary";
@@ -16,7 +17,7 @@ export function LoanRequestSheet() {
   const sheet = useDisclosure();
   const [amount, setAmount] = useState("");
   const [tenure, setTenure] = useState("6");
-  const { submit, pending, fieldError, formError } = useCommand(requestLoanAction, { onSuccess: sheet.hide });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(requestLoanAction, { draftKey: "loan.request", onSuccess: sheet.hide });
   const emi = Number(amount) > 0 ? Math.ceil(Number(amount) / Number(tenure)) : 0;
   return (
     <>
@@ -25,7 +26,8 @@ export function LoanRequestSheet() {
         Request advance or loan
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title="Request an advance or loan" description="Finance reviews every request. Repayment is deducted from salary." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="loan-type" label="Type" required>
             <SelectInput
               id="loan-type"

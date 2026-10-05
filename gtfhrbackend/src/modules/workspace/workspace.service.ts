@@ -19,10 +19,24 @@ import {
 import { employeeDetailSchema, employmentEventSchema } from "../../contracts/employee.js";
 import { sessionSchema } from "../../contracts/session.js";
 import { newId } from "../../core/database/ids.js";
-import { AppError, ConflictError, NotFoundError, ValidationError } from "../../core/errors/index.js";
+import {
+  AppError,
+  AuthorizationError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from "../../core/errors/index.js";
 import { assertVersion } from "../../core/http/request-context.js";
 import { personRef, photoUrlFor } from "../../core/people/person-ref.js";
-import { can, requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import {
+  assertEmployeeInScope,
+  departmentInScope,
+  employeeIdsInScope,
+  hasAdministrativeReach,
+  requireOrgWide,
+} from "../../core/security/scope.js";
+import { managesAudience, requireAudience, requireManagedRecord } from "./workspace.access.js";
 import { toIsoDate, todayInOrgZone } from "../../utils/date.js";
 import { createWorkspaceRepository, workspaceCommand } from "./workspace.repository.js";
 import { privateProfileSchema, type CommandContext } from "./workspace.schema.js";
@@ -49,6 +63,11 @@ export function createWorkspaceService(prisma: PrismaClient) {
     context: CommandContext,
     work: Parameters<typeof workspaceCommand<T>>[6],
   ) => workspaceCommand(prisma, actor, action, id, context.key, context.requestId, work);
+  /** HR helpdesk reach over a ticket's requester: the `helpdesk.queue` grant must cover their department. */
+  const handlesTicket = async (actor: AuthenticatedActor, ownerId: string | null): Promise<boolean> =>
+    ownerId !== null &&
+    hasAdministrativeReach(actor, "helpdesk.queue") &&
+    (await employeeIdsInScope(prisma, actor, "helpdesk.queue", [ownerId])).has(ownerId);
   const service = {
     async session(actor: AuthenticatedActor) {
       const [employee, organization, notifications] = await Promise.all([
@@ -73,14 +92,18 @@ export function createWorkspaceService(prisma: PrismaClient) {
     async employee(actor: AuthenticatedActor, id: string) {
       const employee = await repo.employee(id);
       const self = id === actor.employeeId;
-      const hr = can(actor, "employee.update");
-      if (!self && !hr && employee.status === "exited") throw new NotFoundError();
+      // HR reach applies only inside the operator's departments (BE-003); elsewhere they see the colleague view.
+      const hr = departmentInScope(actor, "employee.update", employee.departmentId);
+      const hrRead = hr || departmentInScope(actor, "employee.read", employee.departmentId);
+      const manager = employee.managerId === actor.employeeId;
+      if (!self && !hrRead && employee.status === "exited") throw new NotFoundError();
+      const history = self || hrRead || manager;
       const [organization, profile, timeline, assignment, exit] = await Promise.all([
         repo.organization(),
         self || hr ? repo.get(`profile:${id}`) : null,
-        repo.list("employment_event", { ownerId: id }),
+        history ? repo.list("employment_event", { ownerId: id }) : [],
         repo.get(`assignment:${id}`),
-        repo.get(`exit:${id}`),
+        history ? repo.get(`exit:${id}`) : null,
       ]);
       const probation = z
         .object({
@@ -130,7 +153,12 @@ export function createWorkspaceService(prisma: PrismaClient) {
     },
     async directory(actor: AuthenticatedActor, id: string) {
       const e = await repo.employee(id);
-      if (e.status === "exited" && !can(actor, "employee.read")) throw new NotFoundError();
+      if (
+        e.status === "exited" &&
+        id !== actor.employeeId &&
+        !departmentInScope(actor, "employee.read", e.departmentId)
+      )
+        throw new NotFoundError();
       return {
         person: personRef(e),
         code: e.code,
@@ -165,7 +193,8 @@ export function createWorkspaceService(prisma: PrismaClient) {
       context: CommandContext,
     ) {
       requireCapability(actor, "employee.update");
-      return command(actor, "employee.assignment", id, context, async (r) => {
+      return command(actor, "employee.assignment", id, context, async (r, tx) => {
+        await assertEmployeeInScope(tx, actor, "employee.update", id);
         const employee = await r.employee(id);
         assertVersion(employee.version, context.version ?? input.expectedVersion);
         const [department, location, employees] = await Promise.all([
@@ -175,6 +204,11 @@ export function createWorkspaceService(prisma: PrismaClient) {
         ]);
         if (!department || department.archivedAt || !location || location.archivedAt)
           throw new ValidationError("INVALID_REFERENCE", "Select active department and location.");
+        if (!departmentInScope(actor, "employee.update", department.id))
+          throw new AuthorizationError(
+            "Moving people to this department needs organization-wide access.",
+            "ORG_WIDE_ACCESS_REQUIRED",
+          );
         let managerId: string | null = input.managerId || null;
         const visited = new Set([id]);
         while (managerId) {
@@ -219,7 +253,7 @@ export function createWorkspaceService(prisma: PrismaClient) {
       });
     },
     async organization(actor: AuthenticatedActor) {
-      requireCapability(actor, "policy.publish");
+      requireOrgWide(actor, "policy.publish");
       const [departments, locations, employees, probation] = await Promise.all([
         repo.departments(),
         repo.locations(),
@@ -246,7 +280,7 @@ export function createWorkspaceService(prisma: PrismaClient) {
       originalName: string | undefined,
       context: CommandContext,
     ) {
-      requireCapability(actor, "policy.publish");
+      requireOrgWide(actor, "policy.publish");
       return command(actor, "organization.department", originalName ?? input.name, context, async (r) => {
         if (input.headId) await r.employee(input.headId);
         const original = originalName ? await r.department(originalName) : null;
@@ -260,7 +294,7 @@ export function createWorkspaceService(prisma: PrismaClient) {
       });
     },
     location(actor: AuthenticatedActor, name: string, context: CommandContext) {
-      requireCapability(actor, "policy.publish");
+      requireOrgWide(actor, "policy.publish");
       return command(actor, "organization.location", name, context, async (r) => {
         await r.saveLocation(newId("loc"), name);
         return { name };
@@ -272,7 +306,7 @@ export function createWorkspaceService(prisma: PrismaClient) {
       name: string,
       context: CommandContext,
     ) {
-      requireCapability(actor, "policy.publish");
+      requireOrgWide(actor, "policy.publish");
       return command(actor, `organization.${kind}.archive`, name, context, async (r) => {
         const row = kind === "department" ? await r.department(name) : await r.location(name);
         if (!row) throw new NotFoundError();
@@ -293,7 +327,7 @@ export function createWorkspaceService(prisma: PrismaClient) {
       );
     },
     setting(actor: AuthenticatedActor, key: string, data: unknown, context: CommandContext) {
-      requireCapability(actor, "policy.publish");
+      requireOrgWide(actor, "policy.publish");
       return command(actor, "organization.setting", key, context, async (r) => {
         await r.saveSetting(key, data);
         return { ok: true };
@@ -301,11 +335,18 @@ export function createWorkspaceService(prisma: PrismaClient) {
     },
     async events(actor: AuthenticatedActor) {
       const employee = await repo.employee(actor.employeeId);
-      return (await repo.list("event"))
-        .map((r) => companyEventSchema.parse(r.data))
-        .filter(
-          (e) => can(actor, "event.manage") || e.audience === "Everyone" || e.audience === employee.department.name,
-        );
+      const events = (await repo.list("event")).map((r) => companyEventSchema.parse(r.data));
+      // Event managers also see events addressed to the departments they manage (all of them when org-wide).
+      const visible = await Promise.all(
+        events.map(
+          async (e) =>
+            e.audience === "Everyone" ||
+            e.audience === employee.department.name ||
+            (hasAdministrativeReach(actor, "event.manage") &&
+              (await managesAudience(repo, actor, "event.manage", e.audience))),
+        ),
+      );
+      return events.filter((_e, index) => visible[index]);
     },
     event(
       actor: AuthenticatedActor,
@@ -315,7 +356,14 @@ export function createWorkspaceService(prisma: PrismaClient) {
     ) {
       requireCapability(actor, "event.manage");
       return command(actor, "event.save", id ?? "new", context, async (r) => {
-        if (id) await r.require(id, "event");
+        if (id)
+          await requireManagedRecord(
+            r,
+            actor,
+            "event.manage",
+            companyEventSchema.parse((await r.require(id, "event")).data).audience,
+          );
+        await requireAudience(r, actor, "event.manage", input.audience);
         const key = id ?? newId("evt");
         await r.upsert(key, "event", actor.employeeId, {
           ...input,
@@ -327,24 +375,35 @@ export function createWorkspaceService(prisma: PrismaClient) {
       });
     },
     archive(actor: AuthenticatedActor, id: string, kind: "event" | "announcement", context: CommandContext) {
-      requireCapability(actor, kind === "event" ? "event.manage" : "announcement.publish");
+      const capability = kind === "event" ? "event.manage" : "announcement.publish";
+      requireCapability(actor, capability);
       return command(actor, `${kind}.archive`, id, context, async (r) => {
         const row = await r.require(id, kind);
+        const { audience } = z.object({ audience: z.string().default("Everyone") }).parse(row.data);
+        await requireManagedRecord(r, actor, capability, audience);
         await r.update(id, row.data, row.version, "archived");
         return { ok: true };
       });
     },
     async announcements(actor: AuthenticatedActor, view: string | undefined) {
-      if (view === "admin") requireCapability(actor, "announcement.publish");
+      if (view === "admin") {
+        requireCapability(actor, "announcement.publish");
+        if (!hasAdministrativeReach(actor, "announcement.publish"))
+          throw new AuthorizationError("You don't have access to this.");
+      }
       const employee = await repo.employee(actor.employeeId);
-      return (await repo.list("announcement"))
+      const rows = (await repo.list("announcement"))
         .map((r) => announcementSchema.parse(r.data))
-        .map((a) => ({ ...a, status: new Date(a.publishedAt) > new Date() ? "scheduled" : "published" }))
-        .filter(
-          (a) =>
-            view === "admin" ||
-            (a.status === "published" && (a.audience === "Everyone" || a.audience === employee.department.name)),
-        );
+        .map((a) => ({ ...a, status: new Date(a.publishedAt) > new Date() ? "scheduled" : "published" }));
+      // Admin view: only announcements addressed to the operator's departments (everything when organization-wide).
+      const visible = await Promise.all(
+        rows.map(async (a) =>
+          view === "admin"
+            ? managesAudience(repo, actor, "announcement.publish", a.audience)
+            : a.status === "published" && (a.audience === "Everyone" || a.audience === employee.department.name),
+        ),
+      );
+      return rows.filter((_a, index) => visible[index]);
     },
     announcement(
       actor: AuthenticatedActor,
@@ -354,9 +413,16 @@ export function createWorkspaceService(prisma: PrismaClient) {
     ) {
       requireCapability(actor, "announcement.publish");
       return command(actor, "announcement.save", id ?? "new", context, async (r) => {
-        if (id) await r.require(id, "announcement");
+        if (id)
+          await requireManagedRecord(
+            r,
+            actor,
+            "announcement.publish",
+            announcementSchema.parse((await r.require(id, "announcement")).data).audience,
+          );
         if (input.audience !== "Everyone" && !(await r.department(input.audience)))
           throw new ValidationError("INVALID_AUDIENCE", "Choose an existing department.");
+        await requireAudience(r, actor, "announcement.publish", input.audience);
         const key = id ?? newId("ann");
         const publishedAt = input.publishAt ? new Date(`${input.publishAt}:00+05:30`) : new Date();
         if (!Number.isFinite(publishedAt.getTime()))
@@ -378,18 +444,29 @@ export function createWorkspaceService(prisma: PrismaClient) {
       return z.array(ticketCategorySchema).parse(configured?.value ?? helpdeskCategories);
     },
     async tickets(actor: AuthenticatedActor, scope: string | undefined) {
-      if (scope === "queue") requireCapability(actor, "helpdesk.queue");
-      return (await repo.list("ticket", scope === "queue" ? {} : { ownerId: actor.employeeId })).map((r) =>
-        ticketDetailSchema.parse(r.data),
+      if (scope !== "queue")
+        return (await repo.list("ticket", { ownerId: actor.employeeId })).map((r) => ticketDetailSchema.parse(r.data));
+      requireCapability(actor, "helpdesk.queue");
+      if (!hasAdministrativeReach(actor, "helpdesk.queue"))
+        throw new AuthorizationError("You don't have access to this.");
+      // The HR queue holds only tickets raised by employees inside the operator's departments (BE-003).
+      const rows = await repo.list("ticket");
+      const owners = await employeeIdsInScope(
+        prisma,
+        actor,
+        "helpdesk.queue",
+        rows.flatMap((r) => (r.ownerId ? [r.ownerId] : [])),
       );
+      return rows.filter((r) => r.ownerId && owners.has(r.ownerId)).map((r) => ticketDetailSchema.parse(r.data));
     },
     async ticket(actor: AuthenticatedActor, id: string) {
       const row = await repo.require(id, "ticket");
-      if (row.ownerId !== actor.employeeId && !can(actor, "helpdesk.queue")) throw new NotFoundError();
+      const hr = await handlesTicket(actor, row.ownerId);
+      if (row.ownerId !== actor.employeeId && !hr) throw new NotFoundError();
       const dto = ticketDetailSchema.parse(row.data);
       return {
         ...dto,
-        viewerIsHr: can(actor, "helpdesk.queue"),
+        viewerIsHr: hr,
         canReply: dto.state !== "closed",
         canClose: dto.state !== "closed",
       };
@@ -432,11 +509,12 @@ export function createWorkspaceService(prisma: PrismaClient) {
     ticketCommand(actor: AuthenticatedActor, id: string, body: string | null, context: CommandContext) {
       return command(actor, body === null ? "helpdesk.close" : "helpdesk.reply", id, context, async (r) => {
         const row = await r.require(id, "ticket");
-        if (row.ownerId !== actor.employeeId && !can(actor, "helpdesk.queue")) throw new NotFoundError();
+        const hr = await handlesTicket(actor, row.ownerId);
+        if (row.ownerId !== actor.employeeId && !hr) throw new NotFoundError();
         const dto = ticketDetailSchema.parse(row.data);
         if (dto.state === "closed") throw new ConflictError("TICKET_CLOSED", "This ticket is already closed.");
         const at = new Date().toISOString();
-        const fromHr = can(actor, "helpdesk.queue") && row.ownerId !== actor.employeeId;
+        const fromHr = hr && row.ownerId !== actor.employeeId;
         if (body !== null)
           dto.messages.push({ id: newId("msg"), author: (await r.employee(actor.employeeId)).name, fromHr, body, at });
         const state = body === null ? "closed" : fromHr ? "awaiting_you" : "open";

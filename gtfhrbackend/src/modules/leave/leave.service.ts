@@ -3,7 +3,8 @@ import type { PrismaClient, TimeWorkflow } from "@prisma/client";
 import { z } from "zod";
 import { newId } from "../../core/database/ids.js";
 import { assertVersion } from "../../core/http/request-context.js";
-import { can, requireCapability } from "../../core/security/actor.js";
+import { can } from "../../core/security/actor.js";
+import { employeeScopeWhere, hasAdministrativeReach, isOrgWide, requireOrgWide } from "../../core/security/scope.js";
 import { addDays, daysBetween, todayInOrgZone, toIsoDate } from "../../utils/date.js";
 import {
   type LeaveOverview,
@@ -30,6 +31,7 @@ import {
   calendarDay,
   canDecide,
   clockTime,
+  requireAdministers,
   datesBetween,
   decimal,
   employeeOf,
@@ -134,8 +136,7 @@ export function createLeaveService(prisma: PrismaClient) {
   const repo = createTimeRepository(prisma);
   return {
     async eligibility(ctx: CommandContext, employeeId: string) {
-      requireCapability(ctx.actor, "employee.update");
-      await employeeOf(repo, employeeId);
+      await requireAdministers(repo, ctx.actor, "employee.update", employeeId);
       const record = await repo.document(`time_profile:${employeeId}`);
       return {
         employeeId,
@@ -146,9 +147,8 @@ export function createLeaveService(prisma: PrismaClient) {
       };
     },
     saveEligibility(ctx: CommandContext, employeeId: string, input: z.infer<typeof leaveEligibilityBody>) {
-      requireCapability(ctx.actor, "employee.update");
       return timeCommand(prisma, ctx, `leave.eligibility.${employeeId}.verify`, async (r) => {
-        await employeeOf(r, employeeId);
+        await requireAdministers(r, ctx.actor, "employee.update", employeeId);
         const id = `time_profile:${employeeId}`,
           previous = await r.document(id);
         assertVersion(previous?.version ?? 0, ctx.version ?? input.version);
@@ -338,8 +338,11 @@ export function createLeaveService(prisma: PrismaClient) {
     holidays: (ctx: CommandContext) => holidaysFor(repo, ctx.actor.employeeId),
     async ledger(ctx: CommandContext, employeeId?: string, year?: string): Promise<LeaveLedger> {
       const id = employeeId ?? ctx.actor.employeeId;
-      if (id !== ctx.actor.employeeId && !can(ctx.actor, "employee.update"))
-        fail("FORBIDDEN", "Only HR can read another employee's ledger.", 403);
+      if (id !== ctx.actor.employeeId) {
+        if (!hasAdministrativeReach(ctx.actor, "employee.update"))
+          fail("FORBIDDEN", "Only HR can read another employee's ledger.", 403);
+        await requireAdministers(repo, ctx.actor, "employee.update", id);
+      }
       const e = await employeeOf(repo, id),
         selected = year ?? todayInOrgZone().slice(0, 4),
         types = await policyTypes(repo),
@@ -395,12 +398,14 @@ export function createLeaveService(prisma: PrismaClient) {
         ),
       };
     },
-    async people() {
-      return (await repo.people()).map(personRef);
+    async people(ctx: CommandContext) {
+      if (!hasAdministrativeReach(ctx.actor, "employee.update"))
+        fail("FORBIDDEN", "You don't have access to this.", 403);
+      return (await repo.people(employeeScopeWhere(ctx.actor, "employee.update"))).map(personRef);
     },
     adjust(ctx: CommandContext, input: z.infer<typeof balanceAdjustmentInputSchema>) {
       return timeCommand(prisma, ctx, "leave.balance.adjust", async (r, reference) => {
-        await employeeOf(r, input.employeeId);
+        await requireAdministers(r, ctx.actor, "employee.update", input.employeeId);
         const balance = await leaveBalance(r, input.employeeId, input.leaveTypeId),
           units = Number(input.days) * (input.direction === "debit" ? -1 : 1);
         if (Number(balance.available) + units < 0)
@@ -446,7 +451,18 @@ export function createLeaveService(prisma: PrismaClient) {
       const balance = co ? await leaveBalance(repo, ctx.actor.employeeId, co.id) : null,
         encashments = await repo.workflows({
           kind: "encashment",
-          ...(can(ctx.actor, "employee.update") ? {} : { employeeId: ctx.actor.employeeId }),
+          ...(isOrgWide(ctx.actor, "employee.update")
+            ? {}
+            : {
+                employeeId: {
+                  in: hasAdministrativeReach(ctx.actor, "employee.update")
+                    ? [
+                        ctx.actor.employeeId,
+                        ...(await repo.people(employeeScopeWhere(ctx.actor, "employee.update"))).map((e) => e.id),
+                      ]
+                    : [ctx.actor.employeeId],
+                },
+              }),
         });
       return {
         today,
@@ -463,7 +479,7 @@ export function createLeaveService(prisma: PrismaClient) {
         encashments: await Promise.all(
           encashments.filter((e) => e.employeeId === ctx.actor.employeeId).map((e) => encashDto(repo, ctx, e)),
         ),
-        encashQueue: can(ctx.actor, "employee.update")
+        encashQueue: hasAdministrativeReach(ctx.actor, "employee.update")
           ? await Promise.all(
               encashments.filter((e) => e.employeeId !== ctx.actor.employeeId).map((e) => encashDto(repo, ctx, e)),
             )
@@ -610,8 +626,13 @@ export function createLeaveService(prisma: PrismaClient) {
         await r.updateWorkflow(id, { state: "cancelled", version: { increment: 1 } });
         return { reference: row.reference, state: "cancelled" };
       }),
-    yearEnd: () => yearEndView(repo, todayInOrgZone().slice(0, 4)),
+    // Year-end closing runs over the whole organization: organization-level (BE-003).
+    yearEnd: async (ctx: CommandContext) => {
+      requireOrgWide(ctx.actor, "employee.update");
+      return yearEndView(repo, todayInOrgZone().slice(0, 4));
+    },
     commitYear(ctx: CommandContext, year: string) {
+      requireOrgWide(ctx.actor, "employee.update");
       return timeCommand(prisma, ctx, `leave.year_end.${year}`, async (r) => {
         if (year !== todayInOrgZone().slice(0, 4)) fail("INVALID_YEAR", "Only the current policy year can be closed.");
         if (await r.document(`year_end:${year}`))
@@ -724,11 +745,13 @@ export function createLeaveService(prisma: PrismaClient) {
         };
       });
       return {
-        scope: can(ctx.actor, "employee.read")
+        scope: isOrgWide(ctx.actor, "employee.read")
           ? "organization"
-          : can(ctx.actor, "attendance.read.team")
-            ? "team"
-            : "department",
+          : hasAdministrativeReach(ctx.actor, "employee.read")
+            ? "department"
+            : can(ctx.actor, "attendance.read.team")
+              ? "team"
+              : "department",
         today: items
           .filter((r) => r.from <= today)
           .map((r) => ({ person: r.person, leaveType: r.leaveType, until: r.to })),

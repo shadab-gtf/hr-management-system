@@ -3,7 +3,7 @@ import type { PrismaClient, TimeWorkflow } from "@prisma/client";
 import { z } from "zod";
 import { newId } from "../../core/database/ids.js";
 import { assertVersion } from "../../core/http/request-context.js";
-import { can } from "../../core/security/actor.js";
+import { hasAdministrativeReach, isOrgWide } from "../../core/security/scope.js";
 import { addDays, todayInOrgZone, daysBetween } from "../../utils/date.js";
 import {
   type TimesheetWeek,
@@ -51,7 +51,9 @@ export function createTimesheetsService(prisma: PrismaClient) {
         if (daysBetween(from, to) < 0 || daysBetween(from, to) > 186)
           fail("INVALID_RANGE", "Export a range of at most 186 days.");
         const people = await scopedPeople(r, ctx.actor),
-          eligible = can(ctx.actor, "employee.read") ? people : people.filter((e) => e.id !== ctx.actor.employeeId),
+          eligible = hasAdministrativeReach(ctx.actor, "employee.read")
+            ? people
+            : people.filter((e) => e.id !== ctx.actor.employeeId),
           all = await projects(r),
           weeks = await r.workflows({
             kind: "timesheet",
@@ -321,7 +323,7 @@ export function createTimesheetsService(prisma: PrismaClient) {
         ids = new Set(people.map((p) => p.id)),
         visible = all.filter(
           (p) =>
-            can(ctx.actor, "employee.read") ||
+            isOrgWide(ctx.actor, "employee.read") ||
             p.scope === ctx.actor.employeeId ||
             p.memberIds.some((id) => ids.has(id)),
         );
@@ -350,7 +352,7 @@ export function createTimesheetsService(prisma: PrismaClient) {
         if (id && !old) fail("NOT_FOUND", "Project was not found.", 404);
         if (
           old &&
-          !can(ctx.actor, "employee.read") &&
+          !isOrgWide(ctx.actor, "employee.read") &&
           old.scope !== ctx.actor.employeeId &&
           !old.memberIds.some((id) => ids.has(id))
         )
@@ -550,4 +552,3 @@ async function projectDto(repo: TimeRepository, id: string): Promise<Project> {
     audit: [],
   };
 }
-

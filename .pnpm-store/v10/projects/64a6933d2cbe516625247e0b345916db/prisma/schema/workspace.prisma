@@ -45,12 +45,12 @@ model AccountLink {
 
 /// Private small files; authenticated endpoints serve bytes, never a public storage path.
 model PrivateFile {
-  id         String   @id @db.VarChar(100)
-  ownerId    String   @map("owner_id") @db.VarChar(32)
-  mime       String   @db.VarChar(100)
-  bytes      Bytes
-  sha256     String   @db.VarChar(64)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String   @id @db.VarChar(100)
+  ownerId   String   @map("owner_id") @db.VarChar(32)
+  mime      String   @db.VarChar(100)
+  bytes     Bytes
+  sha256    String   @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([ownerId])
   @@map("private_files")

@@ -1,7 +1,8 @@
 "use client";
 
-import { startTransition, useActionState, useRef, type FormEvent } from "react";
+import { startTransition, useActionState, useRef, type FormEvent, type RefObject } from "react";
 import { toast } from "sonner";
+import { useFormDraft } from "@/hooks/use-form-draft";
 import { idleResult, type ActionResult } from "@/types/action";
 
 type ServerAction = (prev: ActionResult, formData: FormData) => Promise<ActionResult>;
@@ -15,19 +16,31 @@ function newKey(): string {
 /**
  * Command lifecycle for one intent (state-management.md):
  * - one idempotency key per intent, reused on retry, rotated only after success;
- * - durable inline result state; Sonner toast only supplements success.
+ * - durable inline result state; Sonner toast only supplements success;
+ * - optional form draft (`draftKey`): attach `formRef` to the <form> and render
+ *   `<DraftNotice draft={draft} />`; the draft is cleared after a successful submit
+ *   and kept on cancel / close (see useFormDraft for what is never persisted).
  */
 export function useCommand(
   action: ServerAction,
-  options: { onSuccess?: (result: Extract<ActionResult, { status: "success" }>) => void; toast?: boolean } = {},
+  options: {
+    onSuccess?: (result: Extract<ActionResult, { status: "success" }>) => void;
+    toast?: boolean;
+    /** Stable per form; include the record id for edit forms. Null/undefined disables drafts. */
+    draftKey?: string | null;
+    /** The component's own <form> ref, kept in sync when `formRef` is attached instead. */
+    form?: RefObject<HTMLFormElement | null>;
+  } = {},
 ) {
   const key = useRef<string | null>(null);
+  const draft = useFormDraft(options.draftKey, options.form);
   const [state, formAction, pending] = useActionState(async (prev: ActionResult, formData: FormData) => {
     key.current ??= newKey();
     formData.set("idempotencyKey", key.current);
     const result = await action(prev, formData);
     if (result.status === "success") {
       key.current = null;
+      draft.clear();
       if (options.toast !== false)
         toast.success(result.message, {
           description: result.reference ? `Reference ${result.reference}` : undefined,
@@ -59,5 +72,5 @@ export function useCommand(
   const formError =
     state.status === "error" && Object.keys(state.fieldErrors ?? {}).length === 0 ? state.message : undefined;
 
-  return { state, submit, dispatch, pending, fieldError, formError };
+  return { state, submit, dispatch, pending, fieldError, formError, formRef: draft.ref, draft };
 }

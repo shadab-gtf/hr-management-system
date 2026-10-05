@@ -15,6 +15,7 @@ import {
   TextInput,
   describedBy,
 } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import {
   addCandidateAction,
@@ -111,7 +112,7 @@ export function CommandButton({
 export function RequisitionSheet({ options }: { options: RecruitmentOptions }) {
   const [justification, setJustification] = useState("new_role");
   return (
-    <FormSheet
+    <FormSheet draftKey={"requisition.new"}
       action={raiseRequisitionAction}
       title="Raise a hiring requisition"
       description="HR reviews the role, headcount and budget before it becomes a job opening."
@@ -291,7 +292,7 @@ export function RequisitionDecision({
         label="Approve"
         pendingLabel="Approving…"
       />
-      <FormSheet
+      <FormSheet draftKey={`requisition.reject:${requisitionId}`}
         action={decideRequisitionAction}
         title={`Reject ${title}`}
         description="The manager sees your reason."
@@ -338,7 +339,7 @@ export function JobSheet({
 }) {
   const id = job?.id ?? "new";
   return (
-    <FormSheet
+    <FormSheet draftKey={job ? `job.edit:${job.id}` : "job.new"}
       action={saveJobAction}
       title={job ? `Edit ${job.title}` : "New job opening"}
       description="The CTC range is internal and never shown on the careers page."
@@ -616,7 +617,7 @@ export function CandidateSheet({
     (job) => job.state !== "closed" && job.state !== "filled",
   );
   return (
-    <FormSheet
+    <FormSheet draftKey={jobId ? `candidate.new:${jobId}` : "candidate.new"}
       action={addCandidateAction}
       title="Add candidate"
       description="Duplicate check runs on email and mobile. Resume files remain private and require security scanning before download."
@@ -851,7 +852,7 @@ export function MoveStageSheet({
   const [to, setTo] = useState<string>(choices[0] ?? "screening");
   const field = `mv-${candidateId}`;
   return (
-    <FormSheet
+    <FormSheet draftKey={`candidate.move:${candidateId}`}
       action={moveStageAction}
       title={`Move ${name}`}
       description={
@@ -921,11 +922,12 @@ export function MoveStageSheet({
 
 export function NoteForm({ candidateId }: { candidateId: string }) {
   const form = useRef<HTMLFormElement>(null);
-  const { submit, pending, fieldError } = useCommand(addNoteAction, {
+  const { formRef, draft, submit, pending, fieldError } = useCommand(addNoteAction, { draftKey: `candidate.note:${candidateId}`, form,
     onSuccess: () => form.current?.reset(),
   });
   return (
-    <form ref={form} onSubmit={submit} className="form" noValidate>
+    <form ref={formRef} onSubmit={submit} className="form" noValidate>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="candidateId" value={candidateId} />
       <FormField id="note-body" label="Add a note" error={fieldError("body")}>
         <TextArea
@@ -996,7 +998,7 @@ export function InterviewSheet({
   const [mode, setMode] = useState("online");
   const panel = peopleOptions(people);
   return (
-    <FormSheet
+    <FormSheet draftKey={`interview.new:${candidateId}`}
       action={scheduleInterviewAction}
       title="Schedule interview"
       description="Panelists get a notification and see it under My interviews."
@@ -1130,7 +1132,7 @@ export function ScorecardSheet({
   candidateName: string;
 }) {
   return (
-    <FormSheet
+    <FormSheet draftKey={`scorecard:${interviewId}`}
       action={submitScorecardAction}
       title={`Scorecard · ${candidateName}`}
       description="Rate independently — other panelists' feedback unlocks after you submit."
@@ -1231,7 +1233,7 @@ export function OfferSheet({
   budgetLabel: string;
 }) {
   return (
-    <FormSheet
+    <FormSheet draftKey={`offer.new:${candidateId}`}
       action={createOfferAction}
       title="Create offer"
       description={`Approved budget: ${budgetLabel}. Above-budget offers go to Finance for approval before they're extended.`}
@@ -1355,7 +1357,7 @@ export function OfferApproval({
         label="Approve offer"
         pendingLabel="Approving…"
       />
-      <FormSheet
+      <FormSheet draftKey={`offer.send-back:${offerId}`}
         action={decideOfferAction}
         title={`Send back ${reference}`}
         description="HR can revise the offer within budget."
@@ -1400,7 +1402,7 @@ export function OfferResponse({
 }) {
   return (
     <div className="row-actions">
-      <FormSheet
+      <FormSheet draftKey={`offer.accepted:${offerId}`}
         action={respondOfferAction}
         title="Mark offer accepted"
         description="Record how the candidate confirmed."
@@ -1431,7 +1433,7 @@ export function OfferResponse({
           </>
         )}
       </FormSheet>
-      <FormSheet
+      <FormSheet draftKey={`offer.declined:${offerId}`}
         action={respondOfferAction}
         title="Mark offer declined"
         description="The candidate moves to Rejected with this reason."
@@ -1475,7 +1477,7 @@ export function ConvertSheet({
   summary: string;
 }) {
   return (
-    <FormSheet
+    <FormSheet draftKey={`offer.convert:${offerId}`}
       action={convertOfferAction}
       title="Convert to employee"
       description="Creates one employee record linked to this candidate and starts onboarding. Payroll sets up compensation separately."

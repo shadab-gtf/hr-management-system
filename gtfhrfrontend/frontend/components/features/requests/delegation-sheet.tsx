@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { createDelegationAction, revokeDelegationAction } from "@/lib/actions/requests";
@@ -19,7 +20,7 @@ const workflows = [
 
 export function DelegationSheet({ colleagues, today }: { colleagues: { id: string; name: string; designation: string }[]; today: string }) {
   const sheet = useDisclosure();
-  const { submit, pending, fieldError, formError } = useCommand(createDelegationAction, { onSuccess: sheet.hide });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(createDelegationAction, { draftKey: "delegation.new", onSuccess: sheet.hide });
   return (
     <>
       <Button onClick={sheet.show}>
@@ -27,7 +28,8 @@ export function DelegationSheet({ colleagues, today }: { colleagues: { id: strin
         Delegate approvals
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title="Delegate approvals" description="While you’re away, a colleague can decide on your behalf. Every decision records the delegation." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="dl-delegate" label="Delegate to" required error={fieldError("delegateId")}>
             <SelectInput id="dl-delegate" name="delegateId" defaultValue="" placeholder="Choose a colleague" options={colleagues.map((person) => ({ value: person.id, label: `${person.name} — ${person.designation}` }))} aria-invalid={Boolean(fieldError("delegateId"))} aria-describedby={describedBy("dl-delegate", fieldError("delegateId"))} />
           </FormField>

@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { createPollAction } from "@/lib/actions/engage";
@@ -16,7 +17,7 @@ const MAX_OPTIONS = 6;
 export function PollComposer({ today, maxDate, departments, myDepartment, anyDepartment }: { today: string; maxDate: string; departments: string[]; myDepartment: string; anyDepartment: boolean }) {
   const sheet = useDisclosure();
   const [count, setCount] = useState(2);
-  const { submit, pending, fieldError, formError } = useCommand(createPollAction, {
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(createPollAction, { draftKey: "poll.new",
     onSuccess: () => {
       sheet.hide();
       setCount(2);
@@ -31,7 +32,8 @@ export function PollComposer({ today, maxDate, departments, myDepartment, anyDep
         New poll
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title="New poll" description="A quick question for your colleagues. Everyone gets one vote and can change it until the poll closes." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="poll-question" label="Question" required error={fieldError("question")}>
             <TextInput id="poll-question" name="question" maxLength={200} aria-invalid={Boolean(fieldError("question"))} aria-describedby={describedBy("poll-question", fieldError("question"))} />
           </FormField>

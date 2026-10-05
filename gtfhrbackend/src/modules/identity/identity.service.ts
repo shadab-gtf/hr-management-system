@@ -10,7 +10,10 @@ import {
   NotFoundError,
   ValidationError,
 } from "../../core/errors/index.js";
-import { requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { PRIVILEGED_ROLES, requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { departmentInScope, isOrgWide, requireOrgWide } from "../../core/security/scope.js";
+import { notify } from "../../core/notifications/notify.js";
+import { assertAccessChangeAllowed, grantableRoles } from "./access.rules.js";
 import { encrypt, decrypt } from "../../core/security/encryption.js";
 import { hashPassword } from "../../core/security/hashing.js";
 import { generateTotpSecret, verifyTotp } from "../../core/security/totp.js";
@@ -22,7 +25,7 @@ import { createIdentityRepository } from "./identity.repository.js";
 import { workspaceCommand } from "../workspace/workspace.repository.js";
 import type { CommandContext } from "../workspace/workspace.schema.js";
 import type { passwordSetupInput, roleInput } from "./identity.schema.js";
-const privileged = new Set(["hr_operator", "payroll_operator", "payroll_approver"]);
+const privileged = new Set<string>(PRIVILEGED_ROLES);
 export const needsMfa = (roles: readonly string[]) => config.mfaEnforced && roles.some((r) => privileged.has(r));
 const digest = (token: string) => createHash("sha256").update(token).digest("hex");
 
@@ -37,9 +40,16 @@ export function createIdentityService(prisma: PrismaClient) {
   ) => workspaceCommand(prisma, actor, action, id, context.key, context.requestId, work);
   return {
     async access(actor: AuthenticatedActor) {
-      requireCapability(actor, "employee.update");
-      const accounts = await repository.accounts();
-      const outbox = await repository.outbox();
+      requireCapability(actor, "access.manage");
+      const accounts = (await repository.accounts()).filter((e) =>
+        departmentInScope(actor, "access.manage", e.departmentId),
+      );
+      const departments = await repository.activeDepartments();
+      // A department-scoped administrator sees only mail addressed to people in their departments.
+      const inScopeEmails = new Set(accounts.map((e) => e.workEmail));
+      const outbox = (await repository.outbox()).filter(
+        (m) => isOrgWide(actor, "access.manage") || inScopeEmails.has(m.to),
+      );
       return {
         accounts: await Promise.all(
           accounts.map(async (e) => {
@@ -62,6 +72,7 @@ export function createIdentityService(prisma: PrismaClient) {
                       : "not_invited",
               roles: e.roleAssignments.map((r) => ({
                 role: r.role,
+                departments: r.departments.map((d) => d.department),
                 grantedAt: r.grantedAt.toISOString(),
                 expiresAt: r.expiresAt?.toISOString() ?? null,
                 grantedBy: r.grantedBy,
@@ -96,7 +107,13 @@ export function createIdentityService(prisma: PrismaClient) {
         adminReady: true,
         mailReady: Boolean(config.mail.smtpUrl),
         mfaEnforced: config.mfaEnforced,
-        viewer: { employeeId: actor.employeeId, canGrantPrivileged: actor.roles.includes("hr_operator") },
+        viewer: {
+          employeeId: actor.employeeId,
+          canGrantPrivileged: grantableRoles(actor).some((g) => privileged.has(g.role)),
+          isSuperAdmin: actor.roles.includes("super_admin"),
+          grantable: grantableRoles(actor),
+        },
+        departments,
         source: "database",
       };
     },
@@ -140,8 +157,10 @@ export function createIdentityService(prisma: PrismaClient) {
       };
     },
     invite(actor: AuthenticatedActor, employeeId: string, copy: boolean, context: CommandContext) {
-      requireCapability(actor, "employee.update");
+      requireCapability(actor, "access.manage");
       return command(actor, copy ? "identity.invite_link" : "identity.invite", employeeId, context, async (_r, tx) => {
+        const target = await tx.employee.findUnique({ where: { id: employeeId }, select: { departmentId: true } });
+        if (!target || !departmentInScope(actor, "access.manage", target.departmentId)) throw new NotFoundError();
         const r = createIdentityRepository(tx);
         const account = await r.account(employeeId);
         if (!account || account.status === "exited") throw new NotFoundError();
@@ -257,20 +276,53 @@ export function createIdentityService(prisma: PrismaClient) {
       input: z.infer<typeof roleInput>,
       context: CommandContext,
     ) {
-      requireCapability(actor, "employee.update");
+      requireCapability(actor, "access.manage");
       return command(actor, `identity.role.${op}`, employeeId, context, async (_r, tx) => {
         const r = createIdentityRepository(tx);
         await r.lockAdministration();
         const account = await r.account(employeeId);
-        if (!account || account.status === "exited") throw new NotFoundError();
-        if (actor.employeeId === employeeId && privileged.has(input.role))
-          throw new AuthorizationError("Another HR operator must change your privileged access.");
-        if (op === "revoke" && input.role === "hr_operator" && (await r.activeHrCount()) <= 1)
+        // Out-of-scope employees answer 404 so a scoped administrator cannot probe other departments.
+        if (!account || account.status === "exited" || !departmentInScope(actor, "access.manage", account.departmentId))
+          throw new NotFoundError();
+        const current = account.roleAssignments.find((a) => a.role === input.role);
+        if (op === "revoke" && !current) throw new NotFoundError("This person doesn't hold that role.");
+        const departmentIds =
+          op === "grant" ? [...new Set(input.departmentIds)] : (current?.departments.map((d) => d.departmentId) ?? []);
+        assertAccessChangeAllowed(actor, {
+          op,
+          role: input.role,
+          departmentIds,
+          target: { employeeId, departmentId: account.departmentId },
+          mfaEnforced: config.mfaEnforced,
+        });
+        // Re-granting replaces the existing grant, so it must also be one the actor could revoke: a department HR
+        // partner cannot narrow (and so take away) someone's organization-wide or other-department access.
+        if (op === "grant" && current)
+          assertAccessChangeAllowed(actor, {
+            op: "revoke",
+            role: input.role,
+            departmentIds: current.departments.map((d) => d.departmentId),
+            target: { employeeId, departmentId: account.departmentId },
+            mfaEnforced: config.mfaEnforced,
+          });
+        if (op === "grant" && departmentIds.length > 0) {
+          const known = new Set((await r.activeDepartments()).map((d) => d.id));
+          if (departmentIds.some((id) => !known.has(id)))
+            throw new ValidationError("UNKNOWN_DEPARTMENT", "Choose active departments.", {
+              departmentIds: "Choose active departments.",
+            });
+        }
+        // Counted without the target, so a concurrent revoke (both requests loaded before either committed) can
+        // never leave the organization without a super admin or an HR operator.
+        if (op === "revoke" && input.role === "super_admin" && (await r.activeSuperAdminCount(employeeId)) < 1)
+          throw new ConflictError("LAST_SUPER_ADMIN", "Keep at least one active super admin.");
+        if (op === "revoke" && input.role === "hr_operator" && (await r.activeHrCount(employeeId)) < 1)
           throw new ConflictError("LAST_HR", "Keep at least one active HR operator.");
         const expiresAt = input.expiresOn ? new Date(`${input.expiresOn}T23:59:59.999+05:30`) : null;
         if (expiresAt && expiresAt <= new Date())
           throw new ValidationError("INVALID_EXPIRY", "Choose a future expiry date.");
-        if (op === "grant") await r.grantRole(employeeId, input.role, actor.employeeId, input.reason, expiresAt);
+        if (op === "grant")
+          await r.grantRole(employeeId, input.role, actor.employeeId, input.reason, expiresAt, departmentIds);
         else await r.revokeRole(employeeId, input.role);
         await recordAuditEvent(tx, {
           actorEmployeeId: actor.employeeId,
@@ -278,13 +330,22 @@ export function createIdentityService(prisma: PrismaClient) {
           entity: "employee",
           entityId: employeeId,
           requestId: context.requestId,
-          details: { role: input.role, reason: input.reason, expiresOn: input.expiresOn ?? null },
+          details: { role: input.role, departmentIds, reason: input.reason, expiresOn: input.expiresOn ?? null },
+        });
+        // Committed with the change; the realtime hub pushes it and the person's open pages refresh their access.
+        await notify(tx, {
+          employeeId,
+          kind: "system",
+          title: op === "grant" ? "You have new access" : "Your access changed",
+          body:
+            op === "grant" ? "An administrator granted you a new role." : "An administrator removed one of your roles.",
+          href: "/dashboard",
         });
         return { ok: true };
       });
     },
     disable(actor: AuthenticatedActor, employeeId: string, disabled: boolean, reason: string, context: CommandContext) {
-      requireCapability(actor, "employee.update");
+      requireCapability(actor, "access.manage");
       return command(
         actor,
         disabled ? "identity.account.disable" : "identity.account.enable",
@@ -294,13 +355,31 @@ export function createIdentityService(prisma: PrismaClient) {
           const r = createIdentityRepository(tx);
           await r.lockAdministration();
           const account = await r.account(employeeId);
-          if (!account) throw new NotFoundError();
-          if (disabled && actor.employeeId === employeeId)
-            throw new AuthorizationError("You cannot disable your own account.");
+          if (!account || !departmentInScope(actor, "access.manage", account.departmentId)) throw new NotFoundError();
+          if (actor.employeeId === employeeId)
+            throw new AuthorizationError("Another administrator must change your account.", "SELF_ACCESS_CHANGE");
+          const targetIsSuperAdmin = account.roleAssignments.some((a) => a.role === "super_admin");
+          if (targetIsSuperAdmin && !actor.roles.includes("super_admin"))
+            throw new AuthorizationError(
+              "Only a super admin can change a super admin's account.",
+              "ROLE_NOT_GRANTABLE",
+            );
+          // Disabling switches off every role the person holds, so it needs the same rights as revoking each one
+          // (a department HR partner cannot lock out an organization-wide payroll approver).
+          for (const assignment of account.roleAssignments)
+            assertAccessChangeAllowed(actor, {
+              op: "revoke",
+              role: assignment.role,
+              departmentIds: assignment.departments.map((d) => d.departmentId),
+              target: { employeeId, departmentId: account.departmentId },
+              mfaEnforced: config.mfaEnforced,
+            });
+          if (disabled && targetIsSuperAdmin && (await r.activeSuperAdminCount(employeeId)) < 1)
+            throw new ConflictError("LAST_SUPER_ADMIN", "Keep at least one active super admin.");
           if (
             disabled &&
             account.roleAssignments.some((a) => a.role === "hr_operator") &&
-            (await r.activeHrCount()) <= 1
+            (await r.activeHrCount(employeeId)) < 1
           )
             throw new ConflictError("LAST_HR", "Keep at least one active HR operator.");
           await r.accountEnabled(employeeId, disabled);
@@ -401,7 +480,8 @@ export function createIdentityService(prisma: PrismaClient) {
       });
     },
     async audit(actor: AuthenticatedActor, query: Record<string, string>) {
-      requireCapability(actor, "employee.update");
+      // The audit trail spans every department, so it needs organization-wide audit access.
+      requireOrgWide(actor, "audit.read");
       const parsed = z
         .object({
           from: z.iso.date().optional(),

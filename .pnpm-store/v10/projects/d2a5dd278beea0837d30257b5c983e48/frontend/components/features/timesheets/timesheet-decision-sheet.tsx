@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, KeyValueList } from "@/components/ui/display";
 import { FormField, TextArea, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { decideTimesheetAction } from "@/lib/actions/timesheets";
@@ -14,7 +15,7 @@ import { hoursLabel, type TeamTimesheet } from "@/types/timesheets";
 /** Manager review: per-project breakdown, then approve or send back with a comment. */
 export function TimesheetDecisionSheet({ timesheet }: { timesheet: TeamTimesheet }) {
   const sheet = useDisclosure();
-  const { submit, pending, fieldError, formError } = useCommand(decideTimesheetAction, { onSuccess: sheet.hide });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(decideTimesheetAction, { draftKey: `timesheet.decide:${timesheet.id}`, onSuccess: sheet.hide });
   const range = formatDateRange(timesheet.weekStart, timesheet.weekEnd);
   const id = `ts-comment-${timesheet.id}`;
   const error = fieldError("comment");
@@ -39,7 +40,8 @@ export function TimesheetDecisionSheet({ timesheet }: { timesheet: TeamTimesheet
             </Alert>
           )}
           <BreakdownTable weekStart={timesheet.weekStart} weekEnd={timesheet.weekEnd} rows={timesheet.breakdown} dayTotals={timesheet.dayTotals} caption={`Hours for ${timesheet.employee.name}, ${range}`} />
-          <form onSubmit={submit} className="form" noValidate>
+          <form ref={formRef} onSubmit={submit} className="form" noValidate>
+            <DraftNotice draft={draft} />
             <input type="hidden" name="timesheetId" value={timesheet.id} />
             <input type="hidden" name="version" value={timesheet.version} />
             <FormField id={id} label="Comment" hint="Required when sending back; optional when approving." error={error}>

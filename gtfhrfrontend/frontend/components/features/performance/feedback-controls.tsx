@@ -15,7 +15,7 @@ type Option = { id: string; name: string };
 export function GiveFeedbackSheet({ colleagues, competencies, respondTo }: { colleagues: PersonRef[]; competencies: Option[]; respondTo?: { requestId: string; person: PersonRef; question: string } }) {
   const p = respondTo ? `fb-${respondTo.requestId}` : "fb-new";
   return (
-    <FormSheet
+    <FormSheet draftKey={respondTo ? `feedback.respond:${respondTo.requestId}` : "feedback.give"}
       action={giveFeedbackAction}
       title={respondTo ? `Respond to ${respondTo.person.name}` : "Give feedback"}
       description={respondTo ? respondTo.question : "Public praise appears on the praise wall. Private feedback is seen only by the person and their manager."}
@@ -59,7 +59,7 @@ export function GiveFeedbackSheet({ colleagues, competencies, respondTo }: { col
 
 export function RequestFeedbackSheet({ colleagues, goals }: { colleagues: PersonRef[]; goals: { id: string; title: string }[] }) {
   return (
-    <FormSheet action={requestFeedbackAction} title="Request feedback" description="Ask a peer about your work or a specific goal." trigger="Request feedback" triggerVariant="secondary" icon="messages" submitLabel="Send request">
+    <FormSheet draftKey={"feedback.request"} action={requestFeedbackAction} title="Request feedback" description="Ask a peer about your work or a specific goal." trigger="Request feedback" triggerVariant="secondary" icon="messages" submitLabel="Send request">
       {(fieldError) => (
         <>
           <FormField id="fr-asked" label="Ask" required error={fieldError("askedId")}>
@@ -83,7 +83,7 @@ export function DeclineRequestButton({ requestId }: { requestId: string }) {
 
 export function OneOnOneSheet({ counterparts, today }: { counterparts: (PersonRef & { relation: "manager" | "report" })[]; today: string }) {
   return (
-    <FormSheet action={addOneOnOneAction} title="Log a 1:1" description="Private to you and the other person. HR doesn't see 1:1 notes." trigger="Add 1:1 notes" triggerVariant="secondary" icon="note" submitLabel="Save notes">
+    <FormSheet draftKey={"one-on-one.new"} action={addOneOnOneAction} title="Log a 1:1" description="Private to you and the other person. HR doesn't see 1:1 notes." trigger="Add 1:1 notes" triggerVariant="secondary" icon="note" submitLabel="Save notes">
       {(fieldError) => (
         <>
           <div className="form-row">

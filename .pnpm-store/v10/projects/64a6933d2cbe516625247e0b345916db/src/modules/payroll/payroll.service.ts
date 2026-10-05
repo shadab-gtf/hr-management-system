@@ -4,7 +4,14 @@ import { idempotent } from "../../core/database/idempotency.js";
 import { newId } from "../../core/database/ids.js";
 import { AppError } from "../../core/errors/AppError.js";
 import { assertVersion } from "../../core/http/request-context.js";
-import { can, requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { can, requireCapability, type AuthenticatedActor, type CapabilityScope } from "../../core/security/actor.js";
+import {
+  assertEmployeeInScope,
+  hasAdministrativeReach,
+  isOrgWide,
+  requireOrgWide,
+  scopeOf,
+} from "../../core/security/scope.js";
 import { recordAuditEvent } from "../audit-logs/audit.repository.js";
 import { notify } from "../../core/notifications/notify.js";
 import { personRef } from "../../core/people/person-ref.js";
@@ -40,6 +47,31 @@ import { config } from "../../config/index.js";
 export function requirePayroll(actor: AuthenticatedActor) {
   if (!can(actor, "payroll.prepare") && !can(actor, "payroll.approve"))
     throw new AppError(403, "FORBIDDEN", "Payroll is limited to assigned payroll and finance roles.");
+}
+/**
+ * Department reach for payroll reads (BE-003): the union of the actor's payroll.prepare / payroll.approve scopes.
+ * Runs themselves are organization-level, so a department-scoped operator sees only their departments' rows.
+ */
+export function payrollReadScope(actor: AuthenticatedActor): CapabilityScope {
+  requirePayroll(actor);
+  const scopes = (["payroll.prepare", "payroll.approve"] as const).map((capability) => scopeOf(actor, capability));
+  if (scopes.includes("all")) return "all";
+  return [...new Set(scopes.flatMap((scope) => (scope === "all" ? [] : [...scope])))];
+}
+/** Limits a run's per-employee rows to the departments in scope; totals derived from it then cover only those rows. */
+export function scopeRun(
+  run: FullRun,
+  employees: readonly { id: string; departmentId: string }[],
+  scope: CapabilityScope,
+): FullRun {
+  if (scope === "all") return run;
+  const allowed = new Set(employees.filter((row) => scope.includes(row.departmentId)).map((row) => row.id));
+  return {
+    ...run,
+    results: run.results.filter((row) => allowed.has(row.employeeId)),
+    inputs: run.inputs.filter((row) => allowed.has(row.employeeId)),
+    holds: run.holds.filter((row) => allowed.has(row.employeeId)),
+  };
 }
 export const json = (value: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -261,8 +293,12 @@ export function createPayrollService(prisma: PrismaClient) {
     });
   return {
     async overview(actor: AuthenticatedActor): Promise<PayrollOverview> {
-      requirePayroll(actor);
-      const runs = await repository.runs();
+      const scope = payrollReadScope(actor);
+      const [allRuns, employees] = await Promise.all([
+        repository.runs(),
+        scope === "all" ? Promise.resolve([]) : repository.employees(),
+      ]);
+      const runs = allRuns.map((run) => scopeRun(run, employees, scope));
       const payGroup = "India · Monthly · INR";
       const current = runs.find((run) => run.month === todayInOrgZone().slice(0, 7));
       const results = current ? snapshotsOf(current) : [];
@@ -287,14 +323,16 @@ export function createPayrollService(prisma: PrismaClient) {
       };
     },
     async detail(actor: AuthenticatedActor, id: string): Promise<PayrollRunDetail> {
-      requirePayroll(actor);
-      const run = await loadRun(repository, id);
-      const [employees, events, previousRun, profiles] = await Promise.all([
+      const scope = payrollReadScope(actor);
+      const fullRun = await loadRun(repository, id);
+      const [employees, events, fullPreviousRun, profiles] = await Promise.all([
         repository.employees(),
         repository.audit("payroll_run", id),
-        repository.runByMonth(addMonths(run.month, -1)),
+        repository.runByMonth(addMonths(fullRun.month, -1)),
         repository.profiles(),
       ]);
+      const run = scopeRun(fullRun, employees, scope);
+      const previousRun = fullPreviousRun ? scopeRun(fullPreviousRun, employees, scope) : null;
       const people = new Map(employees.map((employee) => [employee.id, employee]));
       const preparer = people.get(run.preparedBy);
       if (!preparer) throw new AppError(409, "PREPARER_MISSING", "The payroll preparer record is unavailable.");
@@ -323,7 +361,7 @@ export function createPayrollService(prisma: PrismaClient) {
             ),
         );
       const canApprove =
-        can(actor, "payroll.approve") && !actorPrepared && run.state === "in_review" && summary.blockers === 0;
+        isOrgWide(actor, "payroll.approve") && !actorPrepared && run.state === "in_review" && summary.blockers === 0;
       const components = new Map<
         string,
         { code: string; name: string; kind: "earning" | "deduction" | "employer"; paise: number }
@@ -485,7 +523,7 @@ export function createPayrollService(prisma: PrismaClient) {
         bankAdvice: {
           available: finalStates.includes(run.state),
           reason: finalStates.includes(run.state) ? null : "Finance must approve the run before payment export.",
-          canExport: finalStates.includes(run.state) && can(actor, "payment.export"),
+          canExport: finalStates.includes(run.state) && isOrgWide(actor, "payment.export"),
           batchReference: `BANK-${run.month}-R${run.revision}`,
           payableCount: payable.length,
           payableAmount: inr(payable.reduce((total, row) => total + paiseFromAmount(row.payslip.net.amount), 0)),
@@ -500,8 +538,9 @@ export function createPayrollService(prisma: PrismaClient) {
                   : "No payable salary",
               net: row.payslip.net,
             })),
+          // Export batches cover the whole organization, so only organization-wide readers see them.
           exports: events
-            .filter((event) => event.action === "Bank advice exported")
+            .filter((event) => scope === "all" && event.action === "Bank advice exported")
             .map((event) => {
               const details = z
                 .object({ count: z.number().int(), amountPaise: z.string().default("0") })
@@ -529,14 +568,16 @@ export function createPayrollService(prisma: PrismaClient) {
           tds: sum("tds"),
         },
         commands: {
-          canEditInputs: editable && can(actor, "payroll.prepare"),
-          canHold: run.state !== "paid" && can(actor, "payroll.prepare"),
+          canEditInputs: editable && hasAdministrativeReach(actor, "payroll.prepare"),
+          canHold: run.state !== "paid" && hasAdministrativeReach(actor, "payroll.prepare"),
           inputsLockedReason: editable ? null : "Inputs are frozen once submitted for review.",
           canSubmit:
-            ["calculated", "rejected"].includes(run.state) && can(actor, "payroll.submit") && summary.blockers === 0,
+            ["calculated", "rejected"].includes(run.state) &&
+            isOrgWide(actor, "payroll.submit") &&
+            summary.blockers === 0,
           canApprove,
           canReject: canApprove,
-          canPublish: can(actor, "payroll.publish") && run.state === "approved",
+          canPublish: isOrgWide(actor, "payroll.publish") && run.state === "approved",
           blockedReason:
             preparerIsViewer && run.state === "in_review"
               ? "A different payroll approver must review this run."
@@ -547,7 +588,8 @@ export function createPayrollService(prisma: PrismaClient) {
       };
     },
     create(actor: AuthenticatedActor, month: string, key: string | undefined, requestId: string) {
-      requireCapability(actor, "payroll.prepare");
+      // A run covers every employee: organization-level.
+      requireOrgWide(actor, "payroll.prepare");
       return idempotent(prisma, { actorId: actor.employeeId, key, command: `payroll.create:${month}` }, async (tx) => {
         const repo = createPayrollRepository(tx);
         await repo.lock(month);
@@ -577,7 +619,8 @@ export function createPayrollService(prisma: PrismaClient) {
         calculate: "payroll.prepare",
         mark_paid: "payment.export",
       } as const;
-      requireCapability(actor, capabilities[command]);
+      // Run state transitions (and recalculation of the whole run) are organization-level.
+      requireOrgWide(actor, capabilities[command]);
       return idempotent(prisma, { actorId: actor.employeeId, key, command: `payroll.${command}:${id}` }, async (tx) => {
         const repo = createPayrollRepository(tx);
         await repo.lock(id);
@@ -691,6 +734,7 @@ export function createPayrollService(prisma: PrismaClient) {
     ) {
       requireCapability(actor, "payroll.prepare");
       return idempotent(prisma, { actorId: actor.employeeId, key, command: `payroll.input:${id}` }, async (tx) => {
+        await assertEmployeeInScope(tx, actor, "payroll.prepare", input.employeeId);
         const repo = createPayrollRepository(tx);
         await repo.lock(id);
         const run = await loadRun(repo, id);
@@ -730,8 +774,9 @@ export function createPayrollService(prisma: PrismaClient) {
           const run = await loadRun(repo, id);
           if (!editableStates.includes(run.state))
             throw new AppError(409, "RUN_LOCKED", "Inputs are frozen once submitted for review.");
-          if (!run.inputs.some((input) => input.id === inputId))
-            throw new AppError(404, "NOT_FOUND", "Payroll input not found.");
+          const target = run.inputs.find((input) => input.id === inputId);
+          if (!target) throw new AppError(404, "NOT_FOUND", "Payroll input not found.");
+          await assertEmployeeInScope(tx, actor, "payroll.prepare", target.employeeId);
           await repo.removeInput(inputId);
           await repo.updateRun(id, { revision: { increment: 1 } });
           await persistCalculation(repo, await loadRun(repo, id));
@@ -750,6 +795,7 @@ export function createPayrollService(prisma: PrismaClient) {
     ) {
       requireCapability(actor, "payroll.prepare");
       return idempotent(prisma, { actorId: actor.employeeId, key, command: `payroll.hold:${id}` }, async (tx) => {
+        await assertEmployeeInScope(tx, actor, "payroll.prepare", employeeId);
         const repo = createPayrollRepository(tx);
         await repo.lock(id);
         const run = await loadRun(repo, id);
@@ -775,6 +821,7 @@ export function createPayrollService(prisma: PrismaClient) {
           const run = await loadRun(repo, id);
           const hold = run.holds.find((row) => row.id === holdId);
           if (!hold) throw new AppError(404, "NOT_FOUND", "Salary hold not found.");
+          await assertEmployeeInScope(tx, actor, "payroll.prepare", hold.employeeId);
           if (hold.releasedAt || run.state === "paid")
             throw new AppError(409, "INVALID_STATE", "This salary hold cannot be released.");
           await repo.releaseHold(holdId, actor.employeeId, note);

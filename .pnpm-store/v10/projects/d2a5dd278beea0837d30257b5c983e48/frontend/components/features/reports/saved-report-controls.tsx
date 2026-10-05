@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, Segmented, TextArea, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { deleteReportAction, removeScheduleAction, runScheduleNowAction, saveReportAction, scheduleReportAction } from "@/lib/actions/reports";
@@ -36,7 +37,7 @@ export function SaveReportSheet({
   const router = useRouter();
   const sheet = useDisclosure();
   const [visibility, setVisibility] = useState<string>(existing?.visibility ?? "private");
-  const { submit, pending, fieldError, formError } = useCommand(saveReportAction, {
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(saveReportAction, { draftKey: existing ? `report.save:${existing.id}` : "report.save.new",
     onSuccess: (result) => {
       sheet.hide();
       if (!existing && result.reference) router.push(`/admin/reports/builder?saved=${encodeURIComponent(result.reference)}`);
@@ -50,7 +51,8 @@ export function SaveReportSheet({
         {trigger}
       </Button>
       <Sheet open={sheet.open} onOpenChange={sheet.setOpen} title={existing ? "Update saved report" : "Save report"} description="Saves the dataset, columns, filters, sort and grouping you previewed." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <input type="hidden" name="spec" value={JSON.stringify(spec)} />
           {existing && (
             <>
@@ -177,7 +179,7 @@ function ScheduleFields({ report, recipients, fieldError }: { report: SavedRepor
 
 export function ScheduleSheet({ report, recipients }: { report: SavedReport; recipients: PersonRef[] }) {
   return (
-    <FormSheet
+    <FormSheet draftKey={`report.schedule:${report.id}`}
       action={scheduleReportAction}
       title={`Schedule “${report.name}”`}
       description="Delivered as an attachment to each recipient."

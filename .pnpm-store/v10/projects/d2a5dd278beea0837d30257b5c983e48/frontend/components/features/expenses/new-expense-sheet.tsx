@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput, TextInput, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { createExpenseAction } from "@/lib/actions/expenses";
 
@@ -23,7 +24,7 @@ const expenseCategories = [
 
 export function NewExpenseSheet({ today }: { today: string }) {
   const [open, setOpen] = useState(false);
-  const { submit, pending, fieldError, formError } = useCommand(createExpenseAction, { onSuccess: () => setOpen(false) });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(createExpenseAction, { draftKey: "expense.new", onSuccess: () => setOpen(false) });
   return (
     <>
       <Button onClick={() => setOpen(true)}>
@@ -31,7 +32,8 @@ export function NewExpenseSheet({ today }: { today: string }) {
         New claim
       </Button>
       <Sheet open={open} onOpenChange={setOpen} title="New expense claim" description="Goes to your manager, then Finance." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="x-title" label="What was it for?" required error={fieldError("title")}>
             <TextInput id="x-title" name="title" maxLength={120} aria-invalid={Boolean(fieldError("title"))} aria-describedby={describedBy("x-title", fieldError("title"))} />
           </FormField>

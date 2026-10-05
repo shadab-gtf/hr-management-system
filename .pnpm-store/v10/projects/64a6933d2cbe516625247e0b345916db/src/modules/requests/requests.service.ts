@@ -4,7 +4,7 @@ import type { PrismaClient, TimeWorkflow } from "@prisma/client";
 import { z } from "zod";
 import { newId } from "../../core/database/ids.js";
 import { assertVersion } from "../../core/http/request-context.js";
-import { can } from "../../core/security/actor.js";
+import { hasAdministrativeReach } from "../../core/security/scope.js";
 import { todayInOrgZone, daysBetween, zonedInstant } from "../../utils/date.js";
 import {
   delegationInputSchema,
@@ -178,7 +178,7 @@ export function createRequestsService(prisma: PrismaClient) {
           fail("INVALID_RANGE", "Delegation must be upcoming and no longer than 90 days.");
         const target = await employeeOf(r, input.delegateId);
         const roles = await r.roleAssignments(target.id);
-        if (!roles.some((role) => ["manager", "hr_operator"].includes(role.role)))
+        if (!roles.some((role) => ["manager", "hr_operator", "super_admin"].includes(role.role)))
           fail("INVALID_DELEGATE", "Choose a manager or HR approver.");
         const overlaps = await r.workflows({
           kind: "delegation",
@@ -339,7 +339,7 @@ export function createRequestsService(prisma: PrismaClient) {
         },
       ];
       return [
-        ...(await otherWorkQueue(repo, ctx)),
+        ...(await otherWorkQueue(prisma, repo, ctx)),
         ...definitions
           .map((d) => ({ ...d, count: allowed.filter((r) => r.kind === d.key).length }))
           .filter((d) => d.count > 0),
@@ -404,7 +404,7 @@ async function approvalDto(repo: TimeRepository, ctx: CommandContext, row: TimeW
     };
   }
   const delegated =
-    row.approverId && row.approverId !== ctx.actor.employeeId && !can(ctx.actor, "employee.update")
+    row.approverId && row.approverId !== ctx.actor.employeeId && !hasAdministrativeReach(ctx.actor, "employee.update")
       ? await repo.employee(row.approverId)
       : null;
   return {

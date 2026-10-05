@@ -18,6 +18,10 @@ export const personas = {
   hr: "emp_0005",
   payroll: "emp_0004",
   finance: "emp_0003",
+  /** Nikhil Anand (CEO): super admin. */
+  superAdmin: "emp_0001",
+  /** Farhan Qureshi (Engineering manager): HR operator limited to the Engineering department. */
+  scopedHr: "emp_0013",
 } as const;
 export type Persona = keyof typeof personas;
 

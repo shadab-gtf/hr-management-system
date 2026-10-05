@@ -31,18 +31,19 @@ try {
       tx.department.findFirst({ where: { id: input.HR_BOOTSTRAP_DEPARTMENT_ID, archivedAt: null } }),
       tx.location.findFirst({ where: { id: input.HR_BOOTSTRAP_LOCATION_ID, archivedAt: null } }),
       tx.roleAssignment.findFirst({
-        where: { role: Role.hr_operator, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+        where: {
+          role: { in: [Role.super_admin, Role.hr_operator] },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
       }),
       tx.employee.findUnique({ where: { workEmail: input.HR_BOOTSTRAP_EMAIL } }),
     ]);
     if (!department || !location)
       throw new Error("Choose existing active department and location IDs before bootstrapping.");
     if (existingEmployee?.status === EmploymentStatus.exited)
-      throw new Error("An exited employee cannot be bootstrapped as an HR operator.");
+      throw new Error("An exited employee cannot be bootstrapped as the first administrator.");
     if (currentHr)
-      throw new Error(
-        "An active HR operator already exists. Use the authenticated HR account-management flow instead.",
-      );
+      throw new Error("An administrator already exists. Grant further access from Access & accounts instead.");
 
     const newEmployeeId = existingEmployee ? null : await nextEmployeeId(tx);
     const employee =
@@ -83,22 +84,22 @@ try {
       update: { reason: "Initial HR bootstrap" },
     });
     await tx.roleAssignment.upsert({
-      where: { employeeId_role: { employeeId: employee.id, role: Role.hr_operator } },
-      create: { employeeId: employee.id, role: Role.hr_operator, reason: "Initial HR bootstrap" },
-      update: { reason: "Initial HR bootstrap", expiresAt: null },
+      where: { employeeId_role: { employeeId: employee.id, role: Role.super_admin } },
+      create: { employeeId: employee.id, role: Role.super_admin, reason: "Initial administrator bootstrap" },
+      update: { reason: "Initial administrator bootstrap", expiresAt: null },
     });
     await tx.auditLog.create({
       data: {
         action: "identity.hr_bootstrapped",
         entity: "employee",
         entityId: employee.id,
-        details: { role: "hr_operator", bootstrap: true },
+        details: { role: "super_admin", bootstrap: true },
       },
     });
     return employee;
   });
   console.info(
-    `HR operator provisioned for ${employee.workEmail}. Clear HR_BOOTSTRAP_PASSWORD from the environment now.`,
+    `Super admin provisioned for ${employee.workEmail}. Clear HR_BOOTSTRAP_PASSWORD from the environment now.`,
   );
 } finally {
   await prisma.$disconnect();

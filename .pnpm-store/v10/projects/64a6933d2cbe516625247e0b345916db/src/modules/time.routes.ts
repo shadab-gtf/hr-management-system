@@ -209,7 +209,7 @@ export function timeRoutes(prisma: PrismaClient): Router {
     }),
     (ctx, _b, p, q) => leave.ledger(ctx, p.id, q.year),
   );
-  add("get", "/leave/admin/people", "employee.update", empty, empty, empty, () => leave.people());
+  add("get", "/leave/admin/people", "employee.update", empty, empty, empty, (ctx) => leave.people(ctx));
   add("post", "/leave/admin/adjustments", "employee.update", balanceAdjustmentInputSchema, empty, empty, (ctx, b) =>
     leave.adjust(ctx, b),
   );
@@ -232,7 +232,7 @@ export function timeRoutes(prisma: PrismaClient): Router {
   add("post", "/leave/encashments/:id/cancel", "leave.cancel.self", empty, idParams, empty, (ctx, _b, p) =>
     leave.cancelOther(ctx, p.id, "encashment"),
   );
-  add("get", "/leave/admin/year-end", "employee.update", empty, empty, empty, () => leave.yearEnd());
+  add("get", "/leave/admin/year-end", "employee.update", empty, empty, empty, (ctx) => leave.yearEnd(ctx));
   add(
     "post",
     "/leave/admin/year-end/:year/commit",
@@ -302,12 +302,14 @@ export function timeRoutes(prisma: PrismaClient): Router {
     sheets.saveProject(ctx, b, p.id),
   );
 
-  add("get", "/imports/attendance", "import.commit", empty, empty, empty, () => imports.list(), true);
+  add("get", "/imports/attendance", "import.commit", empty, empty, empty, (ctx) => imports.list(ctx), true);
   add("post", "/imports/attendance/upload", "import.commit", importUploadBody, empty, empty, (ctx, b) =>
     imports.upload(ctx, b),
   );
   add("post", "/imports/attendance", "import.commit", importBody, empty, empty, (ctx, b) => imports.preview(ctx, b));
-  add("get", "/imports/attendance/:id", "import.commit", empty, idParams, empty, (_ctx, _b, p) => imports.get(p.id));
+  add("get", "/imports/attendance/:id", "import.commit", empty, idParams, empty, (ctx, _b, p) =>
+    imports.get(ctx, p.id),
+  );
   add("post", "/imports/attendance/:id/commit", "import.commit", empty, idParams, empty, (ctx, _b, p) =>
     imports.commit(ctx, p.id),
   );
@@ -315,7 +317,7 @@ export function timeRoutes(prisma: PrismaClient): Router {
     imports.discard(ctx, p.id),
   );
 
-  add("get", "/config/holidays", "policy.publish", empty, empty, empty, () => config.holidays(), true);
+  add("get", "/config/holidays", "policy.publish", empty, empty, empty, (ctx) => config.holidays(ctx), true);
   add("post", "/config/holidays", "policy.publish", holidayInputSchema, empty, empty, (ctx, b) =>
     config.saveHoliday(ctx, b),
   );
@@ -326,14 +328,14 @@ export function timeRoutes(prisma: PrismaClient): Router {
     config.deleteHoliday(ctx, p.id),
   );
   add("get", "/config/leave-types/version", null, empty, empty, empty, () => config.version());
-  add("get", "/config/leave-types", "policy.publish", empty, empty, empty, () => config.types(), true);
+  add("get", "/config/leave-types", "policy.publish", empty, empty, empty, (ctx) => config.types(ctx), true);
   add("post", "/config/leave-types", "policy.publish", leaveTypeInputSchema, empty, empty, (ctx, b) =>
     config.saveType(ctx, b),
   );
   add("patch", "/config/leave-types/:id", "policy.publish", leaveTypeInputSchema, idParams, empty, (ctx, b, p) =>
     config.saveType(ctx, b, p.id),
   );
-  add("get", "/config/attendance", "policy.publish", empty, empty, empty, () => config.rules());
+  add("get", "/config/attendance", "policy.publish", empty, empty, empty, (ctx) => config.rules(ctx));
   add("post", "/config/shifts", "policy.publish", shiftInputSchema, empty, empty, (ctx, b) => config.saveShift(ctx, b));
   add("patch", "/config/shifts/:id", "policy.publish", shiftInputSchema, idParams, empty, (ctx, b, p) =>
     config.saveShift(ctx, b, p.id),
@@ -366,7 +368,7 @@ export function timeRoutes(prisma: PrismaClient): Router {
     empty,
     empty,
     z.object({ q: z.string().trim().min(3).max(200) }),
-    (_ctx, _b, _p, q) => config.address(q.q),
+    (ctx, _b, _p, q) => config.address(ctx, q.q),
   );
   add("post", "/config/sites", "policy.publish", officeSiteInputSchema, empty, empty, (ctx, b) => config.site(ctx, b));
   add("patch", "/config/sites/:id", "policy.publish", officeSiteInputSchema, idParams, empty, (ctx, b, p) =>

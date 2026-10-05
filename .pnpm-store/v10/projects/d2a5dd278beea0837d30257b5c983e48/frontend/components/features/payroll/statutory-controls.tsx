@@ -26,7 +26,7 @@ export function RecordChallanSheet({ options, today, preselect }: { options: { k
   const tds = key.startsWith("tds|");
   const p = preselect ? `chl-${preselect.replace(/\W/g, "")}` : "chl";
   return (
-    <FormSheet
+    <FormSheet draftKey={"statutory.challan"}
       action={recordChallanAction}
       title="Record challan payment"
       description="Record a payment made on the EPFO, ESIC, state or TIN-NSDL portal. Status is computed against the due date."
@@ -81,7 +81,7 @@ export function RecordChallanSheet({ options, today, preselect }: { options: { k
 
 export function PfSettingsForm({ wageBasis, esiCeiling, version }: { wageBasis: "ceiling" | "actual"; esiCeiling: string; version: number }) {
   return (
-    <InlineForm action={savePfSettingsAction} submitLabel="Save settings">
+    <InlineForm draftKey={"statutory.pf-settings"} action={savePfSettingsAction} submitLabel="Save settings">
       {(fieldError) => (
         <>
           <input type="hidden" name="expectedVersion" value={version} />
@@ -114,7 +114,7 @@ export function PtSlabsSheet({ state, stateName, slabs, version }: { state: stri
   const rows = Array.from({ length: 6 }, (_, index) => slabs[index] ?? { from: "", to: "", monthly: "", february: "" });
   const p = `pt-${state}`;
   return (
-    <FormSheet
+    <FormSheet draftKey={`statutory.pt:${state}`}
       action={savePtSlabsAction}
       title={`Professional tax · ${stateName}`}
       description="Monthly gross slabs in whole rupees. Leave the last upper limit blank. Clear every row to record that the state levies no PT."

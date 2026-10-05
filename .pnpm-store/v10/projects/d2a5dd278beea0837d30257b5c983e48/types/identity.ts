@@ -8,7 +8,10 @@ import { roleSchema } from "@/types/session";
  */
 
 /** Privileged roles need an AAL2 (MFA) session before their capabilities apply. */
-export const privilegedRoles = ["hr_operator", "payroll_operator", "payroll_approver"] as const;
+export const privilegedRoles = ["hr_operator", "payroll_operator", "payroll_approver", "super_admin"] as const;
+
+/** Roles that may be limited to departments; employee (self), manager (own team) and super admin never are. */
+export const scopableRoles = ["hr_operator", "payroll_operator", "payroll_approver"] as const;
 
 export const roleLabels: Record<z.infer<typeof roleSchema>, string> = {
   employee: "Employee",
@@ -16,13 +19,18 @@ export const roleLabels: Record<z.infer<typeof roleSchema>, string> = {
   hr_operator: "HR operator",
   payroll_operator: "Payroll operator",
   payroll_approver: "Payroll approver",
+  super_admin: "Super admin",
 };
 
 export const accountStatusSchema = z.enum(["not_invited", "invited", "active", "disabled"]);
 export const mfaStateSchema = z.enum(["enrolled", "not_enrolled", "unknown"]);
 
+export const departmentRefSchema = z.object({ id: z.string(), name: z.string() });
+
 export const roleGrantSchema = z.object({
   role: roleSchema,
+  /** Departments this grant is limited to; empty = organization-wide. */
+  departments: z.array(departmentRefSchema),
   grantedAt: instantSchema,
   expiresAt: instantSchema.nullable(),
   grantedBy: z.string().nullable(),
@@ -76,7 +84,15 @@ export const accessOverviewSchema = z.object({
   /** Resend configured: mail is delivered, otherwise it stays in the outbox. */
   mailReady: z.boolean(),
   mfaEnforced: z.boolean(),
-  viewer: z.object({ employeeId: z.string(), canGrantPrivileged: z.boolean() }),
+  viewer: z.object({
+    employeeId: z.string(),
+    canGrantPrivileged: z.boolean(),
+    isSuperAdmin: z.boolean(),
+    /** Roles this viewer may grant, and where: "all" = organization-wide, else these department ids only. */
+    grantable: z.array(z.object({ role: roleSchema, scope: z.union([z.literal("all"), z.array(z.string())]) })),
+  }),
+  /** Active departments, for the scope picker. */
+  departments: z.array(departmentRefSchema),
   /** "database" = real Supabase accounts; "mock" = demo listing only. */
   source: z.enum(["database", "mock"]),
 });

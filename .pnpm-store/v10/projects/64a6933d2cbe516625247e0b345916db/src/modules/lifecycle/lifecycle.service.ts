@@ -1,5 +1,8 @@
 import { requireValue } from "../talent/talent.schema.js";
-import { can } from "../../core/security/actor.js";
+import { can, type AuthenticatedActor } from "../../core/security/actor.js";
+import type { Capability } from "../../core/security/capabilities.js";
+import { hasAdministrativeReach, isOrgWide, requireOrgWide } from "../../core/security/scope.js";
+import { NotFoundError } from "../../core/errors/NotFoundError.js";
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import * as l from "../../contracts/lifecycle.js";
@@ -22,6 +25,7 @@ import { leaveBalance, policyTypes } from "../time/time.service.js";
 import type { TalentCall } from "../talent/talent.controller.js";
 import type { TalentRepository } from "../talent/talent.repository.js";
 import { actorOf, ensure, idOf, now, own, addDays, daysBetween } from "../talent/talent.schema.js";
+import { personIdScope, personInScope, requireOrgWideAny } from "../talent/talent.scope.js";
 import { lifecycleRepository } from "./lifecycle.repository.js";
 import * as s from "./lifecycle.schema.js";
 const pendingResignation = (r: l.Resignation) =>
@@ -52,6 +56,18 @@ const placeholders = [
   "purpose",
   "addressedTo",
 ];
+/** BE-003: organization-level commands (configuration, inventory, templates, policies) need an org-wide grant. */
+const orgLevelCommands: Partial<Record<string, Capability>> = {
+  settlement_policy: "policy.publish",
+  checklist: "onboarding.manage",
+  checklist_delete: "onboarding.manage",
+  asset: "asset.manage",
+  asset_status: "asset.manage",
+  template: "letter.issue",
+  policy: "policy.publish",
+  policy_remind: "policy.publish",
+};
+const settlementCaps: readonly Capability[] = ["settlement.prepare", "settlement.approve"];
 const moneyTotal = (lines: l.SettlementLine[], kind: "earning" | "deduction") =>
   lines.filter((l) => l.kind === kind).reduce((n, l) => n + paiseFromAmount(l.amount.amount), 0);
 export function createLifecycleService(prisma: PrismaClient) {
@@ -169,7 +185,13 @@ export function createLifecycleService(prisma: PrismaClient) {
           people.find((e) => e.id === r.person.id)?.managerId === me.id &&
           r.state === "pending_manager",
         canDecideAsHr:
-          can(actor, "onboarding.manage") && r.person.id !== me.id && ["pending_hr", "on_hold"].includes(r.state),
+          personInScope(
+            actor,
+            "onboarding.manage",
+            people.find((e) => e.id === r.person.id),
+          ) &&
+          r.person.id !== me.id &&
+          ["pending_hr", "on_hold"].includes(r.state),
       },
     }));
     const mine = mapped.filter((r) => r.person.id === me.id);
@@ -403,29 +425,36 @@ export function createLifecycleService(prisma: PrismaClient) {
       ],
     };
   }
-  function settlementView(value: s.SettlementRecord, call: TalentCall) {
+  /** `reach(cap)`: whether the settlement's employee is inside the actor's scope for that capability (BE-003). */
+  function settlementView(value: s.SettlementRecord, call: TalentCall, reach: (cap: Capability) => boolean) {
     const actor = actorOf(call);
+    const prepare = can(actor, "settlement.prepare") && reach("settlement.prepare");
+    const approve = can(actor, "settlement.approve") && reach("settlement.approve");
     return l.settlementDetailSchema.parse({
       ...value,
       permissions: {
-        canEdit: can(actor, "settlement.prepare") && changeable(value),
-        canSubmit: can(actor, "settlement.prepare") && changeable(value),
-        canApprove:
-          can(actor, "settlement.approve") && value.state === "submitted" && value.preparedById !== actor.employeeId,
+        canEdit: prepare && changeable(value),
+        canSubmit: prepare && changeable(value),
+        canApprove: approve && value.state === "submitted" && value.preparedById !== actor.employeeId,
         approveBlockedReason: value.preparedById === actor.employeeId ? "An independent approver must approve." : null,
-        canPay: can(actor, "settlement.approve") && value.state === "approved",
+        canPay: approve && value.state === "approved",
       },
     });
   }
   async function read(action: string, call: TalentCall) {
     const repo = unit.read;
     const actor = actorOf(call);
-    if (action === "settlement_policy") return s.settlementPolicySchema.parse(await repo.setting("settlement_policy"));
+    if (action === "settlement_policy") {
+      requireOrgWideAny(actor, [...settlementCaps, "policy.publish"]);
+      return s.settlementPolicySchema.parse(await repo.setting("settlement_policy"));
+    }
     if (action === "letter_queue") {
-      ensure(can(actor, "letter.issue"), "FORBIDDEN", "Letter administration is restricted.");
-      const requests = await repo.list("letter_request", s.letterRequestRecord);
+      ensure(hasAdministrativeReach(actor, "letter.issue"), "FORBIDDEN", "Letter administration is restricted.");
+      const [requests, people] = await Promise.all([repo.list("letter_request", s.letterRequestRecord), repo.people()]);
+      const inScope = personIdScope(actor, "letter.issue", people);
       return Promise.all(
         requests
+          .filter((r) => inScope(r.employeeId))
           .filter((r) =>
             call.query.view === "closed"
               ? ["issued", "rejected"].includes(r.state)
@@ -448,21 +477,23 @@ export function createLifecycleService(prisma: PrismaClient) {
       );
     }
     if (action === "resignation") return resignationView(repo, call);
-    if (action === "onboarding") return onboarding(repo);
-    if (action === "checklists")
-      return { onboarding: await checklist(repo, "onboarding"), offboarding: await checklist(repo, "offboarding") };
-    if (action === "offboarding" || action === "offboarding_board") {
-      const cases = await exits(repo);
+    if (action === "onboarding" || action === "offboarding" || action === "offboarding_board") {
+      // BE-003: HR sees only cases of employees inside its onboarding.manage scope.
+      const inScope = personIdScope(actor, "onboarding.manage", await repo.people());
+      if (action === "onboarding") return (await onboarding(repo)).filter((c) => inScope(c.person.id));
+      const cases = (await exits(repo)).filter((c) => inScope(c.person.id));
       if (action === "offboarding") return cases;
-      const resignations = (await repo.list("resignation", l.resignationSchema)).map((r) => ({
-        ...r,
-        permissions: {
-          ...r.permissions,
-          canDecideAsHr: r.person.id !== actor.employeeId && ["pending_hr", "on_hold"].includes(r.state),
-          canDecideAsManager: false,
-          canWithdraw: false,
-        },
-      }));
+      const resignations = (await repo.list("resignation", l.resignationSchema))
+        .filter((r) => inScope(r.person.id))
+        .map((r) => ({
+          ...r,
+          permissions: {
+            ...r.permissions,
+            canDecideAsHr: r.person.id !== actor.employeeId && ["pending_hr", "on_hold"].includes(r.state),
+            canDecideAsManager: false,
+            canWithdraw: false,
+          },
+        }));
       const interviews = cases.flatMap((c) => (c.interview ? [c.interview] : []));
       return {
         today: todayInOrgZone(),
@@ -481,6 +512,10 @@ export function createLifecycleService(prisma: PrismaClient) {
         canDecide: true,
       };
     }
+    if (action === "checklists") {
+      requireOrgWide(actor, "onboarding.manage");
+      return { onboarding: await checklist(repo, "onboarding"), offboarding: await checklist(repo, "offboarding") };
+    }
     if (action === "assets" || action === "my_assets") {
       const [assets, requests, people] = await Promise.all([
         repo.list("asset", l.assetDetailSchema),
@@ -493,53 +528,68 @@ export function createLifecycleService(prisma: PrismaClient) {
           returned: await repo.list("asset_return", s.returnRecord, { ownerId: actor.employeeId }),
           requests: requests.filter((r) => r.requester.id === actor.employeeId),
         };
+      // BE-003: a scoped operator sees unassigned stock plus assets/requests of employees in its departments.
+      const inScope = personIdScope(actor, "asset.manage", people);
+      const visible = assets.filter((a) => !a.assignee || inScope(a.assignee.id));
       return {
-        assets,
-        requests,
-        people: people.filter((e) => e.status !== "exited").map(personRef),
+        assets: visible,
+        requests: requests.filter((r) => inScope(r.requester.id)),
+        people: people.filter((e) => e.status !== "exited" && inScope(e.id)).map(personRef),
         totals: {
-          count: assets.length,
-          assigned: assets.filter((a) => a.status === "assigned").length,
-          inStock: assets.filter((a) => a.status === "in_stock").length,
-          inRepair: assets.filter((a) => a.status === "in_repair").length,
-          retired: assets.filter((a) => a.status === "retired").length,
-          unacknowledged: assets.filter((a) => a.status === "assigned" && !a.acknowledgedAt).length,
-          bookValue: inr(assets.reduce((n, a) => n + paiseFromAmount(a.bookValue.amount), 0)),
+          count: visible.length,
+          assigned: visible.filter((a) => a.status === "assigned").length,
+          inStock: visible.filter((a) => a.status === "in_stock").length,
+          inRepair: visible.filter((a) => a.status === "in_repair").length,
+          retired: visible.filter((a) => a.status === "retired").length,
+          unacknowledged: visible.filter((a) => a.status === "assigned" && !a.acknowledgedAt).length,
+          bookValue: inr(visible.reduce((n, a) => n + paiseFromAmount(a.bookValue.amount), 0)),
         },
       };
     }
     if (action === "settlements") {
-      const settlements = await repo.list("settlement", s.settlementRecord);
+      const [all, people] = await Promise.all([repo.list("settlement", s.settlementRecord), repo.people()]);
+      const byId = new Map(people.map((e) => [e.id, e]));
+      const inScope = personIdScope(actor, settlementCaps, people);
+      const settlements = all.filter((value) => inScope(value.person.id));
       return {
-        settlements: settlements.map((s) => settlementView(s, call)),
+        settlements: settlements.map((value) =>
+          settlementView(value, call, (cap) => personInScope(actor, cap, byId.get(value.person.id))),
+        ),
         eligible: (await exits(repo))
-          .filter((c) => !settlements.some((s) => s.person.id === c.person.id))
+          .filter((c) => inScope(c.person.id) && !all.some((s) => s.person.id === c.person.id))
           .map((c) => ({ person: c.person, department: c.department, lastWorkingDay: c.lastWorkingDay })),
-        canPrepare: can(actor, "settlement.prepare"),
-        canApprove: can(actor, "settlement.approve"),
+        canPrepare: hasAdministrativeReach(actor, "settlement.prepare"),
+        canApprove: hasAdministrativeReach(actor, "settlement.approve"),
       };
     }
     if (action === "settlement") {
       const record = await repo.get(idOf(call, "settlementId"), "settlement", s.settlementRecord);
+      await repo.assertInScope(actor, settlementCaps, record.person.id);
+      const employee = await repo.person(record.person.id);
       if (changeable(record) || record.state === "submitted") {
         const auto = await automaticSettlement(repo, record);
         record.stale = record.sourceFingerprint !== auto.fingerprint;
       }
-      return settlementView(record, call);
+      return settlementView(record, call, (cap) => personInScope(actor, cap, employee));
     }
     if (action === "letter") {
       const letter = await repo.get(idOf(call, "letterId"), "letter", l.issuedLetterSchema);
-      if (!can(actor, "letter.issue")) own(letter.person.id, actor.employeeId);
+      await letterAccess(repo, actor, letter.person.id);
       return letter;
     }
     if (action === "letter_requests")
       return repo.list("letter_request", s.letterRequestRecord, { ownerId: actor.employeeId });
     if (action === "studio") {
-      const [templates, people, issued] = await Promise.all([
+      const [templates, everyone, allIssued] = await Promise.all([
         repo.list("letter_template", l.letterTemplateSchema),
         repo.people(),
         repo.list("letter", l.issuedLetterSchema),
       ]);
+      // BE-003: templates are organization-wide; people and issued letters are limited to the letter.issue scope.
+      const inScope = personIdScope(actor, "letter.issue", everyone);
+      const people = everyone.filter((e) => inScope(e.id));
+      const issued = allIssued.filter((i) => inScope(i.person.id));
+      if (call.query.employeeId) await repo.assertInScope(actor, "letter.issue", call.query.employeeId);
       const template = templates.find((t) => t.id === call.query.templateId);
       return {
         templates: templates.map((t) => ({
@@ -564,7 +614,16 @@ export function createLifecycleService(prisma: PrismaClient) {
       };
     }
     const policies = await repo.list("policy", l.policyAckSchema);
-    if (action === "policies") return policies;
+    if (action === "policies") {
+      if (isOrgWide(actor, "policy.publish")) return policies;
+      // BE-003: a department-scoped publisher sees acknowledgement progress only for its departments.
+      const inScope = personIdScope(actor, "policy.publish", await repo.people());
+      return policies.map((p) => {
+        const pending = p.pending.filter((e) => inScope(e.id));
+        const recent = p.recent.filter((a) => inScope(a.person.id));
+        return { ...p, pending, recent, total: pending.length + recent.length, acknowledged: recent.length };
+      });
+    }
     return policies
       .filter(
         (p) =>
@@ -576,8 +635,16 @@ export function createLifecycleService(prisma: PrismaClient) {
         overdue: p.dueOn < todayInOrgZone() && !p.recent.some((a) => a.person.id === actor.employeeId),
       }));
   }
+  /** Letters: the owner reads their own; letter issuers read those of employees in their scope (404 outside). */
+  async function letterAccess(repo: TalentRepository, actor: AuthenticatedActor, employeeId: string) {
+    if (employeeId === actor.employeeId) return;
+    if (hasAdministrativeReach(actor, "letter.issue")) await repo.assertInScope(actor, "letter.issue", employeeId);
+    else own(employeeId, actor.employeeId);
+  }
   async function command(action: string, call: TalentCall, body: unknown) {
     const actor = actorOf(call);
+    const orgCapability = orgLevelCommands[action];
+    if (orgCapability) requireOrgWide(actor, orgCapability);
     return unit.command(actor.employeeId, call.key, action, async (repo) => {
       const self = await repo.person(actor.employeeId);
       if (action === "settlement_policy") {
@@ -590,6 +657,7 @@ export function createLifecycleService(prisma: PrismaClient) {
           ...z.record(z.string(), z.unknown()).parse(body),
           employeeId: idOf(call, "employeeId"),
         });
+        await repo.assertInScope(actor, "employee.update", input.employeeId);
         const employee = await repo.person(input.employeeId);
         ensure(
           !["notice", "exited"].includes(employee.status),
@@ -609,13 +677,14 @@ export function createLifecycleService(prisma: PrismaClient) {
         return { id: employee.id };
       }
       if (action === "letter_decision") {
-        ensure(can(actor, "letter.issue"), "FORBIDDEN", "Letter administration is restricted.");
+        ensure(hasAdministrativeReach(actor, "letter.issue"), "FORBIDDEN", "Letter administration is restricted.");
         const input = serviceDecisionInputSchema.parse({
           ...z.record(z.string(), z.unknown()).parse(body),
           requestId: idOf(call, "requestId"),
           kind: "letter",
         });
         const request = await repo.get(input.requestId, "letter_request", s.letterRequestRecord);
+        await repo.assertInScope(actor, "letter.issue", request.employeeId);
         ensure(["pending", "in_progress"].includes(request.state), "REQUEST_CLOSED", "This letter request is closed.");
         ensure(request.employeeId !== self.id, "SELF_APPROVAL", "An independent issuer must fulfil your request.");
         if (input.decision === "start") request.state = "in_progress";
@@ -685,6 +754,7 @@ export function createLifecycleService(prisma: PrismaClient) {
       }
       if (action === "onboarding_task") {
         const input = z.object({ done: z.boolean() }).parse(body);
+        await repo.assertInScope(actor, "onboarding.manage", idOf(call, "employeeId"));
         const cases = await onboarding(repo);
         const value = cases.find((c) => c.person.id === call.params.employeeId);
         ensure(value, "ONBOARDING_NOT_FOUND", "Onboarding case was not found.");
@@ -760,8 +830,12 @@ export function createLifecycleService(prisma: PrismaClient) {
           const input = s.decisionInput.parse(body);
           ensure(resignation.person.id !== self.id, "SELF_APPROVAL", "You cannot decide your own resignation.");
           const employee = await repo.person(resignation.person.id);
-          const hr = can(actor, "onboarding.manage");
+          // BE-003: HR decides only inside its onboarding.manage scope; otherwise the manager path applies, and an
+          // HR operator who is not the manager gets 404 for another department's resignation.
+          const hr = personInScope(actor, "onboarding.manage", employee);
           if (!hr) {
+            if (employee.managerId !== self.id && hasAdministrativeReach(actor, "onboarding.manage"))
+              throw new NotFoundError("This record was not found.", "RECORD_NOT_FOUND");
             own(employee.managerId ?? "", self.id);
             ensure(resignation.state === "pending_manager", "HR_DECISION_REQUIRED", "HR must decide this resignation.");
           }
@@ -791,6 +865,7 @@ export function createLifecycleService(prisma: PrismaClient) {
         return { reference: resignation.reference, state: resignation.state };
       }
       if (["offboarding_task", "clearance", "interview", "complete"].includes(action)) {
+        await repo.assertInScope(actor, "onboarding.manage", idOf(call, "employeeId"));
         const value = (await exits(repo)).find((e) => e.person.id === call.params.employeeId);
         ensure(value, "EXIT_NOT_FOUND", "Exit case was not found.");
         ensure(value.status === "notice", "EXIT_COMPLETED", "This exit is complete.");
@@ -899,6 +974,7 @@ export function createLifecycleService(prisma: PrismaClient) {
       if (action === "asset_reject") {
         const input = z.object({ decision: z.literal("reject"), reason: z.string().min(5).max(300) }).parse(body);
         const request = await repo.get(idOf(call, "requestId"), "asset_request", l.assetRequestSchema);
+        await repo.assertInScope(actor, "asset.manage", request.requester.id);
         ensure(request.state === "pending", "REQUEST_CLOSED", "This request was already decided.");
         request.state = "rejected";
         request.note = input.reason;
@@ -917,6 +993,7 @@ export function createLifecycleService(prisma: PrismaClient) {
             "ASSET_UNAVAILABLE",
             "Only in-stock assets can be assigned.",
           );
+          await repo.assertInScope(actor, "asset.manage", input.employeeId);
           const employee = await repo.person(input.employeeId);
           ensure(
             !["exited", "notice"].includes(employee.status),
@@ -947,6 +1024,7 @@ export function createLifecycleService(prisma: PrismaClient) {
         if (action === "return") {
           const input = s.returnInput.parse(body);
           ensure(asset.status === "assigned" && asset.assignee, "ASSET_NOT_ASSIGNED", "This asset is not assigned.");
+          await repo.assertInScope(actor, "asset.manage", asset.assignee.id);
           await repo.save(
             "asset_return",
             s.returnRecord,
@@ -1029,6 +1107,7 @@ export function createLifecycleService(prisma: PrismaClient) {
         const input = s.issueInput.parse(body);
         const template = await repo.get(input.templateId, "letter_template", l.letterTemplateSchema);
         ensure(template.active, "TEMPLATE_INACTIVE", "Choose an active template.");
+        await repo.assertInScope(actor, "letter.issue", input.employeeId);
         const employee = await repo.person(input.employeeId);
         if (["relieving", "experience"].includes(template.kind))
           ensure(
@@ -1135,6 +1214,7 @@ export function createLifecycleService(prisma: PrismaClient) {
       let settlement: s.SettlementRecord;
       if (action === "settlement_create") {
         const input = z.object({ employeeId: z.string().min(1) }).parse(body);
+        await repo.assertInScope(actor, "settlement.prepare", input.employeeId);
         const exit = (await exits(repo)).find((e) => e.person.id === input.employeeId);
         ensure(exit, "EXIT_REQUIRED", "Start offboarding before preparing a settlement.");
         ensure(
@@ -1193,7 +1273,14 @@ export function createLifecycleService(prisma: PrismaClient) {
           },
           sourceFingerprint: "",
         };
-      } else settlement = await repo.get(idOf(call, "settlementId"), "settlement", s.settlementRecord);
+      } else {
+        settlement = await repo.get(idOf(call, "settlementId"), "settlement", s.settlementRecord);
+        await repo.assertInScope(
+          actor,
+          ["settlement_decision", "settlement_payment"].includes(action) ? "settlement.approve" : "settlement.prepare",
+          settlement.person.id,
+        );
+      }
       assertVersion(settlement.version, call.version);
       if (["settlement_create", "recalculate", "waiver", "line", "remove_line"].includes(action)) {
         ensure(changeable(settlement), "SETTLEMENT_LOCKED", "Only draft or rejected settlements can be edited.");

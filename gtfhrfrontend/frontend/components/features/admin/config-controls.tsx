@@ -32,6 +32,7 @@ import {
   saveSiteAction,
   toggleOffboardingTaskAction,
 } from "@/lib/actions/hr-admin";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { AppIcon } from "@/components/ui/app-icon";
@@ -62,7 +63,7 @@ export function HolidaySheet({ holiday, locations }: { holiday?: HolidayRecord; 
   const [scope, setScope] = useState(holiday && holiday.locations.length ? "selected" : "all");
   const p = holiday ? `hol-${holiday.id}` : "hol-new";
   return (
-    <FormSheet
+    <FormSheet draftKey={holiday ? `holiday.edit:${holiday.id}` : "holiday.new"}
       action={saveHolidayAction}
       title={holiday ? "Edit holiday" : "Add holiday"}
       description="Leave and attendance use this calendar immediately. Optional holidays are not charged or skipped automatically."
@@ -141,7 +142,7 @@ const eventCategories = [
 export function EventSheet({ event, departments, today }: { event?: CompanyEvent; departments: string[]; today: string }) {
   const p = event ? `ev-${event.id}` : "ev-new";
   return (
-    <FormSheet
+    <FormSheet draftKey={event ? `event.edit:${event.id}` : "event.new"}
       action={saveEventAction}
       title={event ? "Edit event" : "New event"}
       description="Events show on Home for their audience."
@@ -203,7 +204,7 @@ export function CancelEventButton({ id }: { id: string }) {
 
 export function CelebrationSettingsForm({ settings }: { settings: CelebrationSettings }) {
   return (
-    <InlineForm action={saveCelebrationsAction} submitLabel="Save settings">
+    <InlineForm draftKey={"settings.celebrations"} action={saveCelebrationsAction} submitLabel="Save settings">
       {() => (
         <fieldset className="checks">
           <legend className="sr-only">Show on Home</legend>
@@ -234,7 +235,7 @@ export function LeaveTypeSheet({ type }: { type?: LeaveTypeConfig }) {
   const [encashable, setEncashable] = useState(type?.encashable ?? false);
   const p = type ? `lt-${type.id}` : "lt-new";
   return (
-    <FormSheet
+    <FormSheet draftKey={type ? `leave-type.edit:${type.id}` : "leave-type.new"}
       action={saveLeaveTypeAction}
       title={type ? `Edit ${type.name}` : "Add leave type"}
       description="Saving creates a new policy version. Balances recalculate from the new entitlement; past requests keep their original units."
@@ -401,7 +402,7 @@ export function ShiftSheet({ shift }: { shift?: ShiftConfig }) {
   };
   const net = toMin(end) - toMin(start) - Number(breakMinutes || 0);
   return (
-    <FormSheet
+    <FormSheet draftKey={shift ? `shift.edit:${shift.id}` : "shift.new"}
       action={saveShiftAction}
       title={shift ? `Edit ${shift.name}` : "Add shift"}
       description="Late marks use the start time plus grace. Overtime counts after the end time."
@@ -523,7 +524,7 @@ export function DepartmentShiftSelect({ department, shiftId, shifts }: { departm
 export function OvertimeForm({ policy }: { policy: OvertimePolicy }) {
   const [enabled, setEnabled] = useState(policy.enabled);
   return (
-    <InlineForm action={saveOvertimeAction} submitLabel="Save overtime policy">
+    <InlineForm draftKey={"settings.overtime"} action={saveOvertimeAction} submitLabel="Save overtime policy">
       {(fieldError) => (
         <>
           <label className="check-row">
@@ -578,7 +579,7 @@ export function OvertimeForm({ policy }: { policy: OvertimePolicy }) {
 export function LateEarlyForm({ policy }: { policy: LateEarlyPolicy }) {
   const [enabled, setEnabled] = useState(policy.enabled);
   return (
-    <InlineForm action={saveLateEarlyAction} submitLabel="Save late/early policy">
+    <InlineForm draftKey={"settings.late-early"} action={saveLateEarlyAction} submitLabel="Save late/early policy">
       {(fieldError) => (
         <>
           <label className="check-row">
@@ -622,7 +623,7 @@ export function SiteSheet({ site }: { site?: OfficeSite }) {
     setLongitude(lon.toFixed(6));
   };
   return (
-    <FormSheet
+    <FormSheet draftKey={site ? `site.edit:${site.id}` : "site.new"}
       action={saveSiteAction}
       title={site ? `Edit ${site.name}` : "Add office site"}
       description="Find the office by address (OpenStreetMap), or stand at the office and use your current location. Check-ins within the radius (plus the phone's reported accuracy) are verified."
@@ -729,7 +730,7 @@ export function RemoveSiteButton({ id }: { id: string }) {
 export function DepartmentSheet({ department, people }: { department?: { name: string; costCenter: string; head: PersonRef | null }; people: PersonRef[] }) {
   const p = department ? `dep-${department.name.replace(/\W/g, "")}` : "dep-new";
   return (
-    <FormSheet
+    <FormSheet draftKey={department ? `department.edit:${department.name}` : "department.new"}
       action={saveDepartmentAction}
       title={department ? `Edit ${department.name}` : "Add department"}
       description={department ? "Renaming moves everyone in the department with it." : undefined}
@@ -762,9 +763,10 @@ export function RemoveDepartmentButton({ name, headcount }: { name: string; head
 }
 
 export function AddLocationForm() {
-  const { submit, pending, fieldError, formError } = useCommand(addLocationAction, { onSuccess: () => undefined });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(addLocationAction, { draftKey: "location.new", onSuccess: () => undefined });
   return (
-    <form onSubmit={submit} className="inline-add" noValidate>
+    <form ref={formRef} onSubmit={submit} className="inline-add" noValidate>
+      <DraftNotice draft={draft} />
       <FormField id="loc-name" label="New location" error={fieldError("name") ?? formError}>
         <TextInput id="loc-name" name="name" maxLength={60} placeholder="e.g. Bengaluru" {...err("loc-name", fieldError("name") ?? formError)} />
       </FormField>
@@ -783,7 +785,7 @@ const monthOptions = [0, 1, 2, 3, 4, 5, 6].map((m) => ({ value: String(m), label
 
 export function ProbationForm({ defaults }: { defaults: ProbationDefaults }) {
   return (
-    <InlineForm action={saveProbationAction} submitLabel="Save probation rules">
+    <InlineForm draftKey={"settings.probation"} action={saveProbationAction} submitLabel="Save probation rules">
       {(fieldError) => (
         <div className="form-row form-row--3">
           {(
@@ -812,7 +814,7 @@ const owners = ["HR", "IT", "Finance", "Manager", "Employee"].map((value) => ({ 
 export function ChecklistTaskSheet({ list, task }: { list: "onboarding" | "offboarding"; task?: ChecklistTask }) {
   const p = task ? `ck-${list}-${task.id}` : `ck-${list}-new`;
   return (
-    <FormSheet
+    <FormSheet draftKey={task ? `checklist.edit:${list}:${task.id}` : `checklist.new:${list}`}
       action={saveChecklistTaskAction}
       title={task ? "Edit task" : list === "onboarding" ? "Add onboarding task" : "Add exit task"}
       description="Changes apply to every open case using this checklist."
@@ -889,11 +891,12 @@ export function CompleteExitButton({ employeeId, disabledReason }: { employeeId:
 
 export function ServiceDecision({ request }: { request: ServiceRequest }) {
   const [mode, setMode] = useState<"idle" | "reject">("idle");
-  const { submit, pending, fieldError, formError } = useCommand(decideServiceAction);
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(decideServiceAction, { draftKey: `service.decide:${request.id}` });
   const p = `sr-${request.id}`;
   const approveLabel = request.kind === "letter" ? "Issue letter" : request.kind === "loan" ? "Approve loan" : "Verify & apply";
   return (
-    <form onSubmit={submit} className="decision-form stack" noValidate>
+    <form ref={formRef} onSubmit={submit} className="decision-form stack" noValidate>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="requestId" value={request.id} />
       <input type="hidden" name="kind" value={request.kind} />
       {mode === "reject" && (

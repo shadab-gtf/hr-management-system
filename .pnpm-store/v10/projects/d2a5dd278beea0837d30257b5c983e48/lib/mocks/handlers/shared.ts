@@ -4,24 +4,23 @@ import { db, employeeById, photoUrlFor } from "@/lib/mocks/store";
 import { personas, type SeedEmployee } from "@/lib/mocks/seed/people";
 import { initialsOf } from "@/lib/utils/format";
 import type { PersonRef } from "@/types/common";
-import { capabilitiesFor } from "@/lib/mocks/capabilities";
-import type { Capability, Persona, Role } from "@/types/session";
+import { accessSubject } from "@/lib/mocks/handlers/access-store";
+import type { MockPersona } from "@/lib/mocks/seed/people";
+import type { Capability, Role } from "@/types/session";
 
 export interface MockActor {
-  persona: Persona;
+  persona: MockPersona;
   employeeId: string;
   roles: Role[];
   capabilities: Capability[];
+  /** Active grants with their department scope (empty = organization-wide). */
+  grants: { role: Role; departmentIds: readonly string[] }[];
 }
 
-export function actorFor(persona: Persona): MockActor {
-  const config = personas[persona];
-  return {
-    persona,
-    employeeId: config.employeeId,
-    roles: config.roles,
-    capabilities: capabilitiesFor(config.roles),
-  };
+/** The persona's live access: grants are re-read on every call, so a grant or revoke applies to the next request. */
+export function actorFor(persona: MockPersona): MockActor {
+  const subject = accessSubject(personas[persona].employeeId);
+  return { persona, ...subject };
 }
 
 export function can(actor: MockActor, capability: Capability): boolean {
@@ -29,14 +28,22 @@ export function can(actor: MockActor, capability: Capability): boolean {
 }
 
 /** Server-side denial; mirrors the live API's 403 problem. */
-export function requireCapability(actor: MockActor, capability: Capability): void {
+export function requireCapability(
+  actor: MockActor,
+  capability: Capability,
+): void {
   if (!can(actor, capability))
     throw problem(403, "FORBIDDEN", "You don't have access to this.");
 }
 
 export function me(actor: MockActor): SeedEmployee {
   const employee = employeeById(actor.employeeId);
-  if (!employee) throw problem(404, "EMPLOYEE_NOT_LINKED", "No employee record is linked to this account.");
+  if (!employee)
+    throw problem(
+      404,
+      "EMPLOYEE_NOT_LINKED",
+      "No employee record is linked to this account.",
+    );
   return employee;
 }
 
@@ -56,7 +63,8 @@ export function refById(id: string | null): PersonRef | null {
 
 export function directReports(managerId: string): SeedEmployee[] {
   return db().employees.filter(
-    (employee) => employee.managerId === managerId && employee.status !== "exited",
+    (employee) =>
+      employee.managerId === managerId && employee.status !== "exited",
   );
 }
 
@@ -72,5 +80,9 @@ export function idempotent<T>(key: string | undefined, run: () => T): T {
 
 export function versionCheck(current: number, expected: number | undefined) {
   if (expected !== undefined && expected !== current)
-    throw problem(412, "STALE_VERSION", "This record changed since you opened it. Review the latest version.");
+    throw problem(
+      412,
+      "STALE_VERSION",
+      "This record changed since you opened it. Review the latest version.",
+    );
 }

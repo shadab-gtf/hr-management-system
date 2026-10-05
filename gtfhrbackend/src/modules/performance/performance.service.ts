@@ -6,6 +6,8 @@ import { personRef } from "../../core/people/person-ref.js";
 import { assertVersion } from "../../core/http/request-context.js";
 import { newId } from "../../core/database/ids.js";
 import { todayInOrgZone } from "../../utils/date.js";
+import { isOrgWide, requireOrgWide } from "../../core/security/scope.js";
+import { personIdScope } from "../talent/talent.scope.js";
 import type { TalentCall } from "../talent/talent.controller.js";
 import type { TalentRepository } from "../talent/talent.repository.js";
 import { actorOf, ensure, idOf, now, own } from "../talent/talent.schema.js";
@@ -29,6 +31,8 @@ const emptyManager = (): p.PerfManagerPart => ({
 });
 const editableSheet = (r: s.ReviewRecord) => ["draft", "sent_back"].includes(r.sheet.status);
 const versionOf = (call: TalentCall, supplied?: number) => call.version ?? supplied;
+/** BE-003: cycles, calibration locks and competencies affect every department, so they need an org-wide grant. */
+const orgLevelCommands = new Set(["cycle", "advance", "lock", "reopen", "competency"]);
 export function createPerformanceService(prisma: PrismaClient) {
   const unit = performanceRepository(prisma);
   async function snapshot(repo: TalentRepository = unit.read) {
@@ -172,10 +176,16 @@ export function createPerformanceService(prisma: PrismaClient) {
     return [];
   }
   async function admin(call: TalentCall) {
+    const actor = actorOf(call);
     const { cycles, reviews, competencies, people } = await snapshot();
     const cycle = cycles.find((c) => c.id === call.query.cycle) ?? cycles.at(-1) ?? null;
-    const selected = reviews.filter((r) => r.cycleId === cycle?.id);
-    const departments = (await unit.read.departments()).map((d) => d.name);
+    // BE-003: participants, progress and distribution cover only employees in the actor's performance.manage scope.
+    const inScope = personIdScope(actor, "performance.manage", people);
+    const selected = reviews.filter((r) => r.cycleId === cycle?.id && inScope(r.employeeId));
+    const orgWide = isOrgWide(actor, "performance.manage");
+    const departments = (await unit.read.departments())
+      .filter((d) => orgWide || people.some((e) => e.departmentId === d.id && inScope(e.id)))
+      .map((d) => d.name);
     const participants = selected.map((r) => {
       const employee = requireValue(people.find((e) => e.id === r.employeeId));
       const reviewer = people.find((e) => e.id === r.reviewerId);
@@ -227,7 +237,8 @@ export function createPerformanceService(prisma: PrismaClient) {
         blockers: cycle ? blockers(cycle, selected) : [],
         warnings: [],
       },
-      audit: await unit.read.list("audit", p.perfAuditEntrySchema),
+      // The performance audit trail spans every department: organization-wide operators only.
+      audit: orgWide ? await unit.read.list("audit", p.perfAuditEntrySchema) : [],
       competencies,
       departments,
       reviewers: people.filter((e) => e.status !== "exited").map(personRef),
@@ -264,6 +275,7 @@ export function createPerformanceService(prisma: PrismaClient) {
   }
   async function command(action: string, call: TalentCall, body: unknown) {
     const actor = actorOf(call);
+    if (orgLevelCommands.has(action)) requireOrgWide(actor, "performance.manage");
     return unit.command(actor.employeeId, call.key, action, async (repo) => {
       const self = await repo.person(actor.employeeId);
       const auditId = newId("pa");
@@ -479,7 +491,8 @@ export function createPerformanceService(prisma: PrismaClient) {
       if (isManager) {
         own(review.reviewerId ?? "", actor.employeeId);
         ensure(review.employeeId !== actor.employeeId, "SELF_APPROVAL", "You cannot review yourself.");
-      } else if (!isAdmin) own(review.employeeId, actor.employeeId);
+      } else if (isAdmin) await repo.assertInScope(actor, "performance.manage", review.employeeId);
+      else own(review.employeeId, actor.employeeId);
       assertVersion(review.version, call.version ?? (typeof raw.version === "number" ? raw.version : undefined));
       if (action === "goal" || action === "delete_goal") {
         ensure(cycle.phase === "goal_setting" && editableSheet(review), "GOALS_LOCKED", "Goal editing is closed.");

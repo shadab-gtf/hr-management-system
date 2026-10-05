@@ -10,6 +10,8 @@ import { engageRoutes } from "../modules/engage/engage.routes.js";
 import { timeRoutes } from "../modules/time.routes.js";
 import { talentLifecycleRoutes } from "../modules/talent-lifecycle.routes.js";
 import { payrollReportRoutes } from "../modules/payroll-report.routes.js";
+import { realtimeRoutes } from "../modules/realtime/realtime.routes.js";
+import { attendanceLogRoutes } from "../modules/attendance-log/attendance-log.routes.js";
 
 /** Every HTTP route the service exposes. Register a new module here. */
 export function createRouter(prisma: PrismaClient): Router {
@@ -24,6 +26,8 @@ export function createRouter(prisma: PrismaClient): Router {
   router.use(API_PREFIX, talentLifecycleRoutes(prisma));
   router.use(API_PREFIX, payrollReportRoutes(prisma));
   router.use(API_PREFIX, timeRoutes(prisma));
+  router.use(API_PREFIX, attendanceLogRoutes(prisma));
+  router.use(API_PREFIX, realtimeRoutes());
 
   return router;
 }

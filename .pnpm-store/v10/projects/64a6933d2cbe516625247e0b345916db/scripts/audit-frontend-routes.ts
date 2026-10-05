@@ -11,6 +11,7 @@ import { engageRoutes } from "../src/modules/engage/engage.routes.js";
 import { talentLifecycleRoutes } from "../src/modules/talent-lifecycle.routes.js";
 import { payrollReportRoutes } from "../src/modules/payroll-report.routes.js";
 import { timeRoutes } from "../src/modules/time.routes.js";
+import { attendanceLogRoutes } from "../src/modules/attendance-log/attendance-log.routes.js";
 
 type Route = { method: string; path: string };
 type Layer = { route?: { path: string; methods: Record<string, boolean> }; handle?: { stack?: Layer[] } };
@@ -37,6 +38,7 @@ for (const [prefix, router] of [
   ["", talentLifecycleRoutes(prisma)],
   ["", payrollReportRoutes(prisma)],
   ["", timeRoutes(prisma)],
+  ["", attendanceLogRoutes(prisma)],
 ] as const)
   collect((router as unknown as { stack: Layer[] }).stack, prefix);
 

@@ -14,6 +14,8 @@ import { ThemeToggle } from "@/components/features/shell/theme-toggle";
 import type { ThemePreference } from "@/types/foundation";
 import { fill, type Lang, type Messages } from "@/lib/i18n";
 import { signOutAction } from "@/lib/actions/session";
+import { DraftScope } from "@/components/features/drafts/draft-scope";
+import { SignOutForm } from "@/components/features/drafts/sign-out-form";
 import { isActivePath, type NavEntry, type NavItem } from "@/lib/navigation";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import { cn } from "@/lib/utils/cn";
@@ -117,7 +119,7 @@ export function AppFrame({ lang, theme, strings, entries, bottom, quickLinks, us
           </div>
         </header>
         <main id="main" tabIndex={-1} className="app-content">
-          {children}
+          <DraftScope employeeId={user.id}>{children}</DraftScope>
         </main>
       </div>
 
@@ -181,12 +183,12 @@ function SidebarContent({
           <AppIcon name="settings" />
           <span className="nav-label">{strings.settings}</span>
         </Link>
-        <form action={signOutAction}>
+        <SignOutForm action={signOutAction}>
           <button type="submit" className="nav-link nav-signout" title={collapsed ? strings.signOut : undefined}>
             <AppIcon name="logout" />
             <span className="nav-label">{strings.signOut}</span>
           </button>
-        </form>
+        </SignOutForm>
       </div>
     </div>
   );

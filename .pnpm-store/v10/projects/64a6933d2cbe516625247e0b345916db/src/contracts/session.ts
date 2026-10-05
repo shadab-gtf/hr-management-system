@@ -57,6 +57,8 @@ export const capabilitySchema = z.enum([
   "candidate.interview",
   "survey.manage",
   "report.build",
+  "access.manage",
+  "audit.read",
 ]);
 
 export const roleSchema = z.enum([
@@ -65,6 +67,7 @@ export const roleSchema = z.enum([
   "hr_operator",
   "payroll_operator",
   "payroll_approver",
+  "super_admin",
 ]);
 
 export const sessionSchema = z.object({

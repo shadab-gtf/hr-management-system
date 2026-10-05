@@ -10,7 +10,7 @@ export function ClearanceSheet({ employeeId, name, clearance }: { employeeId: st
   const cleared = clearance.status === "cleared";
   const prefix = `cl-${employeeId}-${clearance.department}`;
   return (
-    <FormSheet
+    <FormSheet draftKey={`clearance:${employeeId}:${clearance.department}`}
       action={setClearanceAction}
       title={`${clearance.label} · ${name}`}
       description={clearance.scope}
@@ -45,7 +45,7 @@ const ratingOptions = [5, 4, 3, 2, 1].map((value) => ({ value: String(value), la
 export function ExitInterviewSheet({ employeeId, name, interview }: { employeeId: string; name: string; interview: ExitInterview | null }) {
   const prefix = `ei-${employeeId}`;
   return (
-    <FormSheet action={saveExitInterviewAction} title={`Exit interview · ${name}`} description="Confidential to HR. Managers never see individual answers." trigger={interview ? "Edit interview" : "Record interview"} triggerVariant="secondary" triggerSize="sm" submitLabel="Save interview">
+    <FormSheet draftKey={`exit-interview:${employeeId}`} action={saveExitInterviewAction} title={`Exit interview · ${name}`} description="Confidential to HR. Managers never see individual answers." trigger={interview ? "Edit interview" : "Record interview"} triggerVariant="secondary" triggerSize="sm" submitLabel="Save interview">
       {(fieldError) => (
         <>
           <input type="hidden" name="employeeId" value={employeeId} />

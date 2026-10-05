@@ -8,10 +8,14 @@ import { liveRequest } from "@/lib/api/core/transport";
 import { storeAccessToken } from "@/lib/api/session/credentials";
 import { cookies } from "next/headers";
 import { mockActor } from "@/lib/api/session/session.service";
-import { requireCapability } from "@/lib/mocks/handlers/shared";
+import {
+  mockAccessOverview,
+  mockAuditPage,
+  mockChangeRole,
+  mockEmail,
+  mockSetAccountDisabled,
+} from "@/lib/mocks/handlers/identity";
 import { db as mockDb } from "@/lib/mocks/store";
-import { organization as mockOrganization } from "@/lib/mocks/seed/organization";
-import { personas } from "@/lib/mocks/seed/people";
 import {
   accessOverviewSchema,
   auditPageSchema,
@@ -21,82 +25,39 @@ import {
   type AccessOverview,
   type AuditFilters,
   type AuditPage,
-  type IdentityAccount,
   type SecurityOverview,
 } from "@/types/identity";
 import type { Role } from "@/types/session";
 
 /*
- * Identity & access boundary. Live mode calls the standalone identity API;
- * mock mode shows a read-only demo listing (demo personas have no real
- * accounts, passwords or MFA) and rejects account commands with 503.
+ * Identity & access boundary. Live mode calls the standalone identity API.
+ * Mock mode applies the same role-grant rules to demo personas (grants, revokes,
+ * disabling, audit) but has no real sign-ins, so invitations, passwords and MFA
+ * answer 503.
  */
 
 const demoOnly = () =>
-  problem(503, "LIVE_API_REQUIRED", "Accounts, invites and MFA require a connected HR service. Demo mode has no real sign-ins.");
-
-function mockEmail(name: string) {
-  const [first = "", ...rest] = name.toLowerCase().split(" ");
-  return `${first}.${rest.at(-1) ?? ""}@${mockOrganization.emailDomain}`;
-}
-
-function mockRoles(employeeId: string): Role[] {
-  const managers = new Set(mockDb().employees.flatMap((e) => (e.managerId ? [e.managerId] : [])));
-  const extra = Object.values(personas).find((p) => p.employeeId === employeeId)?.roles ?? [];
-  return [...new Set<Role>(["employee", ...(managers.has(employeeId) ? (["manager"] as Role[]) : []), ...extra])];
-}
-
-async function mockAccess(): Promise<AccessOverview> {
-  const actor = await mockActor();
-  requireCapability(actor, "employee.update");
-  const at = new Date().toISOString();
-  const accounts: IdentityAccount[] = mockDb().employees.map((e) => {
-    const roles = e.status === "exited" ? [] : mockRoles(e.id);
-    return {
-      employeeId: e.id,
-      code: e.code,
-      name: e.name,
-      designation: e.designation,
-      department: e.department,
-      email: mockEmail(e.name),
-      employmentStatus: e.status,
-      status: "not_invited",
-      roles: roles.map((role) => ({ role, grantedAt: at, expiresAt: null, grantedBy: null, reason: "Demo data" })),
-      lastSignInAt: null,
-      invitedAt: null,
-      mfa: "unknown",
-      mfaRequired: roles.some((role) => (["hr_operator", "payroll_operator", "payroll_approver"] as Role[]).includes(role)),
-      canCopyInvite: false,
-    };
-  });
-  return {
-    accounts: accounts.sort((a, b) => a.name.localeCompare(b.name)),
-    outbox: [],
-    adminReady: false,
-    mailReady: false,
-    mfaEnforced: false,
-    viewer: { employeeId: actor.employeeId, canGrantPrivileged: actor.roles.includes("hr_operator") },
-    source: "mock",
-  };
-}
+  problem(
+    503,
+    "LIVE_API_REQUIRED",
+    "Accounts, invites and MFA require a connected HR service. Demo mode has no real sign-ins.",
+  );
 
 export const getAccessOverview = cache(async (): Promise<AccessOverview> =>
   callApi({
     schema: accessOverviewSchema,
     live: { path: "/identity/access" },
-    mock: mockAccess,
+    mock: async () => mockAccessOverview(await mockActor()),
   }),
 );
 
-export const getAuditPage = cache(async (filters: AuditFilters): Promise<AuditPage> =>
-  callApi({
-    schema: auditPageSchema,
-    live: { path: "/audit", query: { ...filters } },
-    mock: async () => {
-      requireCapability(await mockActor(), "employee.update");
-      return { items: [], page: 1, pageSize: 50, total: 0, entities: [], actors: [], source: "mock" } satisfies AuditPage;
-    },
-  }),
+export const getAuditPage = cache(
+  async (filters: AuditFilters): Promise<AuditPage> =>
+    callApi({
+      schema: auditPageSchema,
+      live: { path: "/audit", query: { ...filters } },
+      mock: async () => mockAuditPage(await mockActor(), filters),
+    }),
 );
 
 export const getSecurityOverview = cache(async (): Promise<SecurityOverview> =>
@@ -105,7 +66,9 @@ export const getSecurityOverview = cache(async (): Promise<SecurityOverview> =>
     live: { path: "/me/security" },
     mock: async () => {
       const actor = await mockActor();
-      const employee = mockDb().employees.find((e) => e.id === actor.employeeId);
+      const employee = mockDb().employees.find(
+        (e) => e.id === actor.employeeId,
+      );
       return {
         loginId: employee ? mockEmail(employee.name) : actor.employeeId,
         lastSignInAt: null,
@@ -121,18 +84,31 @@ export const getSecurityOverview = cache(async (): Promise<SecurityOverview> =>
 
 /** MFA gate for the current session, or null outside live mode / when signed out. */
 export const getMfaGate = cache(async () => {
-  if (apiConfig.mode === "mock" || !(await cookies()).get(apiConfig.sessionCookie)) return null;
-  return mfaGateSchema.parse(await liveRequest({ path: "/me/security/mfa-gate" }));
+  if (
+    apiConfig.mode === "mock" ||
+    !(await cookies()).get(apiConfig.sessionCookie)
+  )
+    return null;
+  return mfaGateSchema.parse(
+    await liveRequest({ path: "/me/security/mfa-gate" }),
+  );
 });
 
 /* Commands ---------------------------------------------------------------------- */
 
 const okSchema = z.unknown();
 
-export async function inviteAccount(employeeId: string, idempotencyKey: string) {
+export async function inviteAccount(
+  employeeId: string,
+  idempotencyKey: string,
+) {
   return callApi({
     schema: inviteResultSchema,
-    live: { method: "POST", path: `/identity/accounts/${employeeId}/invite`, idempotencyKey },
+    live: {
+      method: "POST",
+      path: `/identity/accounts/${employeeId}/invite`,
+      idempotencyKey,
+    },
     mock: () => {
       throw demoOnly();
     },
@@ -142,57 +118,125 @@ export async function inviteAccount(employeeId: string, idempotencyKey: string) 
 export async function issueInviteLink(employeeId: string) {
   return callApi({
     schema: z.object({ link: z.string().url(), expiresAt: z.string() }),
-    live: { method: "POST", path: `/identity/accounts/${employeeId}/invite-link` },
+    live: {
+      method: "POST",
+      path: `/identity/accounts/${employeeId}/invite-link`,
+    },
     mock: () => {
       throw demoOnly();
     },
   });
 }
 
-export async function changeRole(op: "grant" | "revoke", input: { employeeId: string; role: Role; reason: string; expiresOn?: string | null; idempotencyKey: string }) {
+export interface RoleChangeInput {
+  employeeId: string;
+  role: Role;
+  reason: string;
+  expiresOn?: string | null;
+  /** Grant only: limit an HR/payroll role to these departments; empty = organization-wide. */
+  departmentIds?: string[];
+  idempotencyKey: string;
+}
+
+export async function changeRole(
+  op: "grant" | "revoke",
+  input: RoleChangeInput,
+) {
+  const body = {
+    role: input.role,
+    reason: input.reason,
+    expiresOn: input.expiresOn ?? null,
+    ...(op === "grant" ? { departmentIds: input.departmentIds ?? [] } : {}),
+  };
   return callApi({
     schema: okSchema,
-    live: { method: "POST", path: `/identity/accounts/${input.employeeId}/roles/${op}`, body: input, idempotencyKey: input.idempotencyKey },
-    mock: () => {
-      throw demoOnly();
+    live: {
+      method: "POST",
+      path: `/identity/accounts/${input.employeeId}/roles/${op}`,
+      body,
+      idempotencyKey: input.idempotencyKey,
     },
+    mock: async () => mockChangeRole(await mockActor(), op, input),
   });
 }
 
-export async function setAccountDisabled(input: { employeeId: string; disabled: boolean; reason: string }) {
+export async function setAccountDisabled(input: {
+  employeeId: string;
+  disabled: boolean;
+  reason: string;
+}) {
   return callApi({
     schema: okSchema,
-    live: { method: "POST", path: `/identity/accounts/${input.employeeId}/${input.disabled ? "disable" : "enable"}`, body: input },
-    mock: () => {
-      throw demoOnly();
+    live: {
+      method: "POST",
+      path: `/identity/accounts/${input.employeeId}/${input.disabled ? "disable" : "enable"}`,
+      body: { reason: input.reason },
     },
+    mock: async () =>
+      mockSetAccountDisabled(
+        await mockActor(),
+        input.employeeId,
+        input.disabled,
+        input.reason,
+      ),
   });
 }
 
 /** Public: no session. Mock/live modes have no local recovery. */
-export async function requestPasswordRecovery(input: { email: string; ip: string }) {
+export async function requestPasswordRecovery(input: {
+  email: string;
+  ip: string;
+}) {
   if (apiConfig.mode === "mock") throw demoOnly();
-  await liveRequest({ method: "POST", path: "/auth/recovery", body: { email: input.email } });
+  await liveRequest({
+    method: "POST",
+    path: "/auth/recovery",
+    body: { email: input.email },
+  });
   return {} as { deliver?: () => Promise<void> };
 }
 
-export async function completePasswordSetup(input: { tokenHash: string; type: "invite" | "recovery"; ref: string; password: string; ip: string }) {
+export async function completePasswordSetup(input: {
+  tokenHash: string;
+  type: "invite" | "recovery";
+  ref: string;
+  password: string;
+  ip: string;
+}) {
   if (apiConfig.mode === "mock") throw demoOnly();
-  return liveRequest({ method: "POST", path: "/auth/set-password", body: input });
+  return liveRequest({
+    method: "POST",
+    path: "/auth/set-password",
+    body: input,
+  });
 }
 
 /** Public: login ID behind an open set-password link, or null (closed link / not live mode). */
 export async function describeSetPasswordLink(ref: string) {
   if (apiConfig.mode === "mock") return null;
-  return z.object({ loginId: z.string(), expiresAt: z.string() }).nullable().parse(await liveRequest({ path: "/auth/link", query: { ref } }));
+  return z
+    .object({ loginId: z.string(), expiresAt: z.string() })
+    .nullable()
+    .parse(await liveRequest({ path: "/auth/link", query: { ref } }));
 }
 
 export async function startMfaEnrollment() {
   if (apiConfig.mode === "mock") throw demoOnly();
-  return z.object({ factorId: z.string(), secret: z.string(), qrCode: z.string() }).parse(await liveRequest({ method: "POST", path: "/me/security/mfa/enroll", body: {} }));
+  return z
+    .object({ factorId: z.string(), secret: z.string(), qrCode: z.string() })
+    .parse(
+      await liveRequest({
+        method: "POST",
+        path: "/me/security/mfa/enroll",
+        body: {},
+      }),
+    );
 }
 
-export async function confirmMfaEnrollment(input: { factorId: string; code: string }) {
+export async function confirmMfaEnrollment(input: {
+  factorId: string;
+  code: string;
+}) {
   return verifyMfaSession(input);
 }
 
@@ -202,7 +246,11 @@ export async function verifyMfaSignIn(input: { code: string }) {
 
 export async function removeMfaFactor(factorId: string) {
   if (apiConfig.mode === "mock") throw demoOnly();
-  const result = await liveRequest({ method: "POST", path: `/me/security/mfa/${encodeURIComponent(factorId)}/remove`, body: {} });
+  const result = await liveRequest({
+    method: "POST",
+    path: `/me/security/mfa/${encodeURIComponent(factorId)}/remove`,
+    body: {},
+  });
   (await cookies()).delete(apiConfig.sessionCookie);
   return result;
 }
@@ -216,12 +264,22 @@ export async function postSignInRoute(next: string) {
   if (apiConfig.mode === "mock") return next;
   const gate = await getMfaGate();
   if (!gate?.required || gate.satisfied) return next;
-  return gate.hasVerifiedFactor ? `/auth/mfa?next=${encodeURIComponent(next)}` : "/settings/security";
+  return gate.hasVerifiedFactor
+    ? `/auth/mfa?next=${encodeURIComponent(next)}`
+    : "/settings/security";
 }
 
 async function verifyMfaSession(input: { factorId?: string; code: string }) {
   if (apiConfig.mode === "mock") throw demoOnly();
-  const data = z.object({ accessToken: z.string(), expiresIn: z.number() }).parse(await liveRequest({ method: "POST", path: "/me/security/mfa/verify", body: input }));
+  const data = z
+    .object({ accessToken: z.string(), expiresIn: z.number() })
+    .parse(
+      await liveRequest({
+        method: "POST",
+        path: "/me/security/mfa/verify",
+        body: input,
+      }),
+    );
   await storeAccessToken(data.accessToken, data.expiresIn);
   return { ok: true };
 }

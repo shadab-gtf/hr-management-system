@@ -10,11 +10,13 @@ import { auditFiltersSchema } from "@/types/identity";
 export const metadata: Metadata = { title: "Audit log" };
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
-const one = (value: string | string[] | undefined) => (typeof value === "string" && value !== "" ? value : undefined);
+const one = (value: string | string[] | undefined) =>
+  typeof value === "string" && value !== "" ? value : undefined;
 
 async function Data({ searchParams }: { searchParams: Search }) {
   const session = await getSession();
-  if (!session || !hasCapability(session, "employee.update")) return <AccessDenied what="the audit log" />;
+  if (!session || !hasCapability(session, "audit.read"))
+    return <AccessDenied what="the audit log" />;
   const query = await searchParams;
   const parsed = auditFiltersSchema.safeParse({
     actor: one(query.actor),
@@ -40,7 +42,9 @@ async function Data({ searchParams }: { searchParams: Search }) {
 
 export default function Page({ searchParams }: { searchParams: Search }) {
   return (
-    <Suspense fallback={<PageSkeleton label="Loading audit log" variant="table" />}>
+    <Suspense
+      fallback={<PageSkeleton label="Loading audit log" variant="table" />}
+    >
       <Data searchParams={searchParams} />
     </Suspense>
   );

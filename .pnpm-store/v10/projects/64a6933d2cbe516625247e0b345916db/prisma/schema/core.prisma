@@ -21,6 +21,7 @@ enum Role {
   hr_operator
   payroll_operator
   payroll_approver
+  super_admin
 }
 
 enum MailStatus {
@@ -52,14 +53,15 @@ model OrganizationSetting {
 }
 
 model Department {
-  id             String     @id @db.VarChar(60)
-  name           String     @unique @db.VarChar(60)
-  costCenter     String?    @map("cost_center") @db.VarChar(80)
+  id             String      @id @db.VarChar(60)
+  name           String      @unique @db.VarChar(60)
+  costCenter     String?     @map("cost_center") @db.VarChar(80)
   /// Department head (employee id); validated by the organization module.
-  headEmployeeId String?    @map("head_employee_id") @db.VarChar(32)
-  archivedAt     DateTime?  @map("archived_at") @db.Timestamptz(6)
-  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  headEmployeeId String?     @map("head_employee_id") @db.VarChar(32)
+  archivedAt     DateTime?   @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   employees      Employee[]
+  roleScopes     RoleScope[]
 
   @@map("departments")
 }
@@ -104,6 +106,8 @@ model Employee {
   notifications   Notification[]
 
   // --- module back-relations (append one line each; keep this block last) ---
+  attLogEntries AttLogEntry[]
+  attLogDevice  AttLogDevice?
 
   @@index([managerId])
   @@index([departmentId])
@@ -142,8 +146,24 @@ model RoleAssignment {
   grantedAt  DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
   expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
 
+  /// Departments this grant is limited to. None = organization-wide. Only HR/payroll roles may be scoped.
+  departments RoleScope[]
+
   @@id([employeeId, role])
   @@map("role_assignments")
+}
+
+/// One department a role grant is limited to (department-wise permissions).
+model RoleScope {
+  employeeId   String         @map("employee_id") @db.VarChar(32)
+  role         Role
+  departmentId String         @map("department_id") @db.VarChar(60)
+  assignment   RoleAssignment @relation(fields: [employeeId, role], references: [employeeId, role], onDelete: Cascade)
+  department   Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@id([employeeId, role, departmentId])
+  @@index([departmentId])
+  @@map("role_scopes")
 }
 
 /// Append-only (UPDATE/DELETE rejected by trigger, prisma/sql/00-core.sql).
@@ -195,18 +215,18 @@ model Notification {
 
 /// Transactional email queue; a dispatcher sends rows after commit. Never store passwords here.
 model MailOutbox {
-  id        String     @id @db.VarChar(40)
-  to        String     @db.VarChar(254)
-  template  String     @db.VarChar(80)
-  subject   String     @db.VarChar(200)
-  textBody  String     @map("text_body")
-  htmlBody  String?    @map("html_body")
-  status    MailStatus @default(queued)
-  attempts  Int        @default(0)
-  nextAttemptAt DateTime @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
-  lastError String?    @map("last_error") @db.VarChar(500)
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  sentAt    DateTime?  @map("sent_at") @db.Timestamptz(6)
+  id            String     @id @db.VarChar(40)
+  to            String     @db.VarChar(254)
+  template      String     @db.VarChar(80)
+  subject       String     @db.VarChar(200)
+  textBody      String     @map("text_body")
+  htmlBody      String?    @map("html_body")
+  status        MailStatus @default(queued)
+  attempts      Int        @default(0)
+  nextAttemptAt DateTime   @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastError     String?    @map("last_error") @db.VarChar(500)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt        DateTime?  @map("sent_at") @db.Timestamptz(6)
 
   @@index([status, createdAt])
   @@map("mail_outbox")

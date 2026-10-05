@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/display";
 import { FormField, SelectInput } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SheetActions } from "@/components/ui/sheet-actions";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { uploadDocumentAction } from "@/lib/actions/documents";
 
@@ -14,7 +15,7 @@ import { uploadDocumentAction } from "@/lib/actions/documents";
 
 export function UploadDocumentSheet() {
   const [open, setOpen] = useState(false);
-  const { submit, pending, fieldError, formError } = useCommand(uploadDocumentAction, { onSuccess: () => setOpen(false) });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(uploadDocumentAction, { draftKey: "document.upload", onSuccess: () => setOpen(false) });
   return (
     <>
       <Button onClick={() => setOpen(true)}>
@@ -22,7 +23,8 @@ export function UploadDocumentSheet() {
         Upload
       </Button>
       <Sheet open={open} onOpenChange={setOpen} title="Upload a document" description="Files are scanned before anyone can open them." dismissible={!pending}>
-        <form onSubmit={submit} className="form" noValidate>
+        <form ref={formRef} onSubmit={submit} className="form" noValidate>
+          <DraftNotice draft={draft} />
           <FormField id="d-category" label="Document type" required>
             <SelectInput
               id="d-category"

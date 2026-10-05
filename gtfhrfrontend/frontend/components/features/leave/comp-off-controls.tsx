@@ -15,7 +15,7 @@ export function CompOffClaimSheet({ days, today, windowDays }: { days: CompOffEl
   const [portion, setPortion] = useState(initial?.maxPortion ?? "full");
   const picked = days.find((day) => day.date === date);
   return (
-    <FormSheet
+    <FormSheet draftKey={"comp-off.claim"}
       action={claimCompOffAction}
       title="Claim comp-off"
       description={`For a week-off or holiday you worked in the last ${windowDays} days. Checked against your punches: 4 h = half day, 8 h = full day.`}
@@ -77,7 +77,7 @@ export function EncashSheet({ options, payrollMonth }: { options: EncashOption[]
   const option = options.find((item) => item.leaveTypeId === typeId);
   const estimate = option ? Math.round(Number(option.perDay.amount) * 100 * Math.max(Number(days) || 0, 0)) : 0;
   return (
-    <FormSheet action={requestEncashmentAction} title="Request leave encashment" description="HR reviews the request. Approved amounts are paid with payroll." trigger="Request encashment" triggerVariant="secondary" icon="moneyIn" submitLabel="Send to HR" pendingLabel="Sending…">
+    <FormSheet draftKey={"leave.encash"} action={requestEncashmentAction} title="Request leave encashment" description="HR reviews the request. Approved amounts are paid with payroll." trigger="Request encashment" triggerVariant="secondary" icon="moneyIn" submitLabel="Send to HR" pendingLabel="Sending…">
       {(fieldError) => (
         <>
           <FormField id="en-type" label="Leave type" required error={fieldError("leaveTypeId")}>

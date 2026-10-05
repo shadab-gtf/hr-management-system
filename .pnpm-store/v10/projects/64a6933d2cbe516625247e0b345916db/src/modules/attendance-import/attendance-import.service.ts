@@ -8,8 +8,35 @@ import { todayInOrgZone, zonedInstant, daysBetween } from "../../utils/date.js";
 import { importBatchSchema, type ImportBatch, type ImportRow } from "../../contracts/attendance-import.js";
 import { importBody, importUploadBody, rosterPayload } from "../time/time.schema.js";
 import { readAttendanceFile, ImportFileError, MAX_IMPORT_BYTES } from "./attendance-file.js";
-import { createTimeRepository, timeCommand, type CommandContext } from "../time/time.repository.js";
+import {
+  createTimeRepository,
+  timeCommand,
+  type CommandContext,
+  type TimeRepository,
+} from "../time/time.repository.js";
+import type { AuthenticatedActor } from "../../core/security/actor.js";
+import { employeeScopeWhere, isOrgWide, scopeOf } from "../../core/security/scope.js";
 import { attendanceRules, clockTime, employeeOf, fail, minutesOf, monday } from "../time/time.service.js";
+/**
+ * BE-003: attendance import is an HR action on other employees. A department-scoped operator previews and commits
+ * rows only for employees of their departments, and sees only batches whose matched employees are all in scope.
+ */
+const CAPABILITY = "import.commit" as const;
+function inScopePeople(repo: TimeRepository, actor: AuthenticatedActor) {
+  return repo.people(employeeScopeWhere(actor, CAPABILITY));
+}
+async function visibleBatch(repo: TimeRepository, actor: AuthenticatedActor, batch: ImportBatch): Promise<boolean> {
+  if (isOrgWide(actor, CAPABILITY)) return true;
+  const codes = new Set((await inScopePeople(repo, actor)).map((e) => e.code));
+  return batch.rows.every((row) => !row.employeeName || codes.has(row.employeeCode));
+}
+async function batchFor(repo: TimeRepository, actor: AuthenticatedActor, id: string) {
+  const doc = await repo.document(id);
+  if (!doc || doc.kind !== "attendance_import") return fail("NOT_FOUND", "Import batch was not found.", 404);
+  const batch = importBatchSchema.parse(doc.payload);
+  if (!(await visibleBatch(repo, actor, batch))) fail("NOT_FOUND", "Import batch was not found.", 404);
+  return { doc, batch };
+}
 export function createAttendanceImportService(prisma: PrismaClient) {
   const repo = createTimeRepository(prisma);
   return {
@@ -37,9 +64,11 @@ export function createAttendanceImportService(prisma: PrismaClient) {
         throw error;
       }
     },
-    async list() {
-      return (await repo.documents("attendance_import")).map((d) => {
-        const p = importBatchSchema.parse(d.payload);
+    async list(ctx: CommandContext) {
+      const batches = (await repo.documents("attendance_import")).map((d) => importBatchSchema.parse(d.payload)),
+        visible = [];
+      for (const p of batches) if (await visibleBatch(repo, ctx.actor, p)) visible.push(p);
+      return visible.map((p) => {
         return {
           id: p.id,
           reference: p.reference,
@@ -54,18 +83,21 @@ export function createAttendanceImportService(prisma: PrismaClient) {
         };
       });
     },
-    async get(id: string) {
-      const doc = await repo.document(id);
-      if (!doc || doc.kind !== "attendance_import") fail("NOT_FOUND", "Import batch was not found.", 404);
-      return previewRows(importBatchSchema.parse(doc.payload));
+    async get(ctx: CommandContext, id: string) {
+      return previewRows((await batchFor(repo, ctx.actor, id)).batch);
     },
     preview(ctx: CommandContext, input: z.infer<typeof importBody>, rawSource?: z.infer<typeof importUploadBody>) {
       return timeCommand(prisma, ctx, "attendance.import.preview", async (r, reference) => {
-        const digest = createHash("sha256").update(JSON.stringify(input.records)).digest("hex"),
+        // A scoped preview validates against fewer employees, so it is a different batch from an org-wide one.
+        const scope = scopeOf(ctx.actor, CAPABILITY),
+          digest = createHash("sha256")
+            .update(JSON.stringify(input.records))
+            .update(scope === "all" ? "" : `|scope:${[...scope].sort().join(",")}`)
+            .digest("hex"),
           id = `import_${digest}`;
         const previous = await r.document(id);
         if (previous) return previewRows(importBatchSchema.parse(previous.payload));
-        const people = await r.people(),
+        const people = await inScopePeople(r, ctx.actor),
           rows: ImportRow[] = [],
           seen = new Set<string>();
         const inputDates = input.records.flatMap((r) => (r.date ? [r.date] : [])).sort(),
@@ -89,7 +121,9 @@ export function createAttendanceImportService(prisma: PrismaClient) {
             message = inputRow.problem ?? "Invalid attendance date.";
           } else if (!employee) {
             status = "error";
-            message = "Employee code is not active.";
+            message = isOrgWide(ctx.actor, CAPABILITY)
+              ? "Employee code is not active."
+              : "Employee code is not active in your departments.";
           } else if (inputRow.date > todayInOrgZone()) {
             status = "error";
             message = "Future attendance cannot be imported.";
@@ -171,12 +205,10 @@ export function createAttendanceImportService(prisma: PrismaClient) {
     },
     commit(ctx: CommandContext, id: string) {
       return timeCommand(prisma, ctx, `attendance.import.${id}.commit`, async (r) => {
-        const doc = await r.document(id);
-        if (!doc || doc.kind !== "attendance_import") fail("NOT_FOUND", "Import batch was not found.", 404);
-        const batch = importBatchSchema.parse(doc.payload);
+        const { doc, batch } = await batchFor(r, ctx.actor, id);
         if (batch.state !== "previewed") fail("IMPORT_CLOSED", "Only previewed imports can be committed.", 409);
         if (batch.totals.errors) fail("IMPORT_HAS_ERRORS", "Fix all error rows before committing.", 422);
-        const people = await r.people();
+        const people = await inScopePeople(r, ctx.actor);
         const peopleByCode = new Map(people.map((e) => [e.code, e])),
           range = required(batch.dateRange),
           recorded = await r.attendanceBatch(
@@ -234,9 +266,7 @@ export function createAttendanceImportService(prisma: PrismaClient) {
     },
     discard: (ctx: CommandContext, id: string) =>
       timeCommand(prisma, ctx, `attendance.import.${id}.discard`, async (r) => {
-        const doc = await r.document(id);
-        if (!doc || doc.kind !== "attendance_import") fail("NOT_FOUND", "Import batch was not found.", 404);
-        const batch = importBatchSchema.parse(doc.payload);
+        const { doc, batch } = await batchFor(r, ctx.actor, id);
         if (batch.state !== "previewed") fail("IMPORT_CLOSED", "Only previewed imports can be discarded.", 409);
         await r.saveDocument(id, "attendance_import", { ...batch, state: "discarded" }, doc.scope ?? undefined);
         return { ok: true };

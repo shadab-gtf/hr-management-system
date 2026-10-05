@@ -4,6 +4,7 @@ import { z } from "zod";
 import { newId } from "../../core/database/ids.js";
 import { assertVersion } from "../../core/http/request-context.js";
 import { can } from "../../core/security/actor.js";
+import { isOrgWide, requireOrgWide } from "../../core/security/scope.js";
 import { addDays, todayInOrgZone, daysBetween } from "../../utils/date.js";
 import { locationCheckSchema, locationReadingSchema, type LocationCheck } from "../../contracts/location.js";
 import {
@@ -48,6 +49,7 @@ import {
   weeklyOff,
   workflowOf,
   canDecide,
+  administers,
 } from "../time/time.service.js";
 import { captureBody, regularizationBody, rosterPayload, swapPayload } from "../time/time.schema.js";
 import { employeeCalendar } from "../time/time.service.js";
@@ -127,6 +129,51 @@ export async function todayAttendance(repo: TimeRepository, employeeId: string) 
     lastUpdatedAt: row?.updatedAt.toISOString() ?? new Date().toISOString(),
   };
 }
+type AttendanceRow = Awaited<ReturnType<TimeRepository["attendance"]>>;
+
+/**
+ * Self-service capture sequence rules, shared by POST /attendance/events and the selfie + GPS log: one check-in per
+ * day, and a check-out needs an open check-in. Null when the punch is allowed.
+ */
+export function captureConflict(
+  existing: AttendanceRow,
+  direction: "check_in" | "check_out",
+): { code: string; message: string } | null {
+  if (direction === "check_in" && existing?.firstIn)
+    return { code: "ALREADY_CHECKED_IN", message: "Check-in is already recorded." };
+  if (direction === "check_out" && (!existing?.firstIn || existing.lastOut))
+    return { code: "INVALID_ATTENDANCE_STATE", message: "A current check-in is required." };
+  return null;
+}
+
+/** Writes one allowed punch (after `captureConflict`) with its server-verified location evidence. */
+export async function applyCapture(
+  r: TimeRepository,
+  input: {
+    employeeId: string;
+    date: string;
+    at: Date;
+    direction: "check_in" | "check_out";
+    existing: AttendanceRow;
+    evidence: LocationCheck;
+    source: string;
+  },
+): Promise<void> {
+  const { employeeId, date, at, direction, existing, evidence } = input;
+  const day = await calendarDay(r, employeeId, date);
+  await r.saveAttendance(employeeId, date, {
+    source: input.source,
+    firstIn: existing?.firstIn ?? at,
+    lastOut: direction === "check_out" ? at : null,
+    workedMinutes:
+      direction === "check_out" && existing?.firstIn
+        ? Math.max(0, Math.floor((at.getTime() - existing.firstIn.getTime()) / 60000) - day.shift.breakMinutes)
+        : 0,
+    ...(direction === "check_in" ? { checkInEvidence: json(evidence) } : {}),
+    ...(direction === "check_out" ? { checkOutEvidence: json(evidence) } : {}),
+  });
+}
+
 export function createAttendanceService(prisma: PrismaClient) {
   const repo = createTimeRepository(prisma);
   return {
@@ -158,28 +205,22 @@ export function createAttendanceService(prisma: PrismaClient) {
         if (employee.status === "exited") fail("INACTIVE_EMPLOYEE", "Attendance is unavailable.", 403);
         const date = todayInOrgZone(),
           now = new Date(),
-          existing = await r.attendance(employee.id, date),
-          day = await calendarDay(r, employee.id, date);
-        if (input.direction === "check_in" && existing?.firstIn)
-          fail("ALREADY_CHECKED_IN", "Check-in is already recorded.", 409);
-        if (input.direction === "check_out" && (!existing?.firstIn || existing.lastOut))
-          fail("INVALID_ATTENDANCE_STATE", "A current check-in is required.", 409);
+          existing = await r.attendance(employee.id, date);
+        const conflict = captureConflict(existing, input.direction);
+        if (conflict) fail(conflict.code, conflict.message, 409);
         // Only coordinates are accepted as evidence; the server recalculates every claimed geofence result.
         const reading =
           input.location?.coordinates && input.location.accuracyMeters !== null
             ? { ...input.location.coordinates, accuracy: input.location.accuracyMeters }
             : null;
-        const evidence = await verifyLocation(r, reading);
-        await r.saveAttendance(employee.id, date, {
+        await applyCapture(r, {
+          employeeId: employee.id,
+          date,
+          at: now,
+          direction: input.direction,
+          existing,
+          evidence: await verifyLocation(r, reading),
           source: "web_self_service",
-          firstIn: existing?.firstIn ?? now,
-          lastOut: input.direction === "check_out" ? now : null,
-          workedMinutes:
-            input.direction === "check_out" && existing?.firstIn
-              ? Math.max(0, Math.floor((now.getTime() - existing.firstIn.getTime()) / 60000) - day.shift.breakMinutes)
-              : 0,
-          ...(input.direction === "check_in" ? { checkInEvidence: json(evidence) } : {}),
-          ...(input.direction === "check_out" ? { checkOutEvidence: json(evidence) } : {}),
         });
         return { reference: await reference("AT"), recordedAt: now.toISOString(), direction: input.direction };
       });
@@ -209,12 +250,7 @@ export function createAttendanceService(prisma: PrismaClient) {
           endDate: input.date,
           payload: json(input),
         });
-        await r.notify(
-          e.managerId,
-          "Attendance correction requested",
-          `${e.name} submitted ${ref}.`,
-          "/approvals",
-        );
+        await r.notify(e.managerId, "Attendance correction requested", `${e.name} submitted ${ref}.`, "/approvals");
         return { reference: ref, state: "pending", approver: e.manager?.name ?? "Manager" };
       });
     },
@@ -302,7 +338,7 @@ export function createAttendanceService(prisma: PrismaClient) {
         holidays: dates.map((_d) => null as string | null),
         weeklyOff: await weeklyOff(repo, selected),
         swapQueue: await Promise.all(swaps.map((s) => swapDto(repo, ctx, s.id))),
-        canEditWeeklyOff: can(ctx.actor, "policy.publish"),
+        canEditWeeklyOff: isOrgWide(ctx.actor, "policy.publish"),
       };
     },
     saveRoster(
@@ -335,8 +371,10 @@ export function createAttendanceService(prisma: PrismaClient) {
         return { ok: true, version: result.version };
       });
     },
-    saveWeeklyOff: (ctx: CommandContext, input: z.infer<typeof weeklyOffInputSchema>) =>
-      timeCommand(prisma, ctx, "roster.weekly_off.save", async (r) => {
+    saveWeeklyOff(ctx: CommandContext, input: z.infer<typeof weeklyOffInputSchema>) {
+      // Weekly-off rules are attendance policy: organization-level (BE-003).
+      requireOrgWide(ctx.actor, "policy.publish");
+      return timeCommand(prisma, ctx, "roster.weekly_off.save", async (r) => {
         if (!(await r.departments()).some((d) => d.name === input.department))
           fail("INVALID_DEPARTMENT", "Choose an active department.");
         await r.saveDocument(`weekly_off:${input.department}`, "weekly_off", {
@@ -346,7 +384,8 @@ export function createAttendanceService(prisma: PrismaClient) {
             (input.alternateSaturdays ? " and alternate Saturdays" : ""),
         });
         return { ok: true };
-      }),
+      });
+    },
     swap(ctx: CommandContext, input: z.infer<typeof shiftSwapInputSchema>) {
       return timeCommand(prisma, ctx, "roster.swap.create", async (r, reference) => {
         const me = await employeeOf(r, ctx.actor.employeeId),
@@ -515,27 +554,46 @@ async function saveRoster(
 }
 export function createTimeConfigService(prisma: PrismaClient) {
   const repo = createTimeRepository(prisma);
+  // Holidays, leave types, shifts, sites and attendance rules are organization-level policy (BE-003): a
+  // department-scoped HR operator cannot read or change them through the configuration endpoints.
+  const orgWide = (ctx: CommandContext) => {
+    requireOrgWide(ctx.actor, "policy.publish");
+  };
   return {
-    holidays: () => holidaysFor(repo),
-    types: () => policyTypes(repo),
+    holidays: async (ctx: CommandContext) => {
+      orgWide(ctx);
+      return holidaysFor(repo);
+    },
+    types: async (ctx: CommandContext) => {
+      orgWide(ctx);
+      return policyTypes(repo);
+    },
     version: () => policyVersion(repo),
-    rules: () => attendanceRules(repo),
-    saveHoliday: (ctx: CommandContext, input: z.infer<typeof holidayInputSchema>, id?: string) =>
-      timeCommand(prisma, ctx, "holiday.save", async (r) => {
+    rules: async (ctx: CommandContext) => {
+      orgWide(ctx);
+      return attendanceRules(repo);
+    },
+    saveHoliday: async (ctx: CommandContext, input: z.infer<typeof holidayInputSchema>, id?: string) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "holiday.save", async (r) => {
         const key = id ?? newId("hol");
         if (id && !(await r.document(id))) fail("NOT_FOUND", "Holiday was not found.", 404);
         await r.saveDocument(key, "holiday", { ...input, id: key });
         return { id: key };
-      }),
-    deleteHoliday: (ctx: CommandContext, id: string) =>
-      timeCommand(prisma, ctx, "holiday.delete", async (r) => {
+      });
+    },
+    deleteHoliday: async (ctx: CommandContext, id: string) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "holiday.delete", async (r) => {
         const doc = await r.document(id);
         if (!doc || doc.kind !== "holiday") fail("NOT_FOUND", "Holiday was not found.", 404);
         await r.deleteDocument(id);
         return { ok: true };
-      }),
-    saveType: (ctx: CommandContext, input: z.infer<typeof leaveTypeInputSchema>, id?: string) =>
-      timeCommand(prisma, ctx, "leave.policy.save", async (r) => {
+      });
+    },
+    saveType: async (ctx: CommandContext, input: z.infer<typeof leaveTypeInputSchema>, id?: string) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "leave.policy.save", async (r) => {
         const key = id ?? newId("lt"),
           types = await policyTypes(r),
           existing = types.find((t) => t.id === key);
@@ -562,18 +620,22 @@ export function createTimeConfigService(prisma: PrismaClient) {
         const version = String(Number(await policyVersion(r)) + 1);
         await r.saveDocument("leave_policy_version", "policy_version", version);
         return { id: key, version };
-      }),
-    saveShift: (ctx: CommandContext, input: z.infer<typeof shiftInputSchema>, id?: string) =>
-      timeCommand(prisma, ctx, "attendance.shift.save", async (r) => {
+      });
+    },
+    saveShift: async (ctx: CommandContext, input: z.infer<typeof shiftInputSchema>, id?: string) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "attendance.shift.save", async (r) => {
         const rules = await attendanceRules(r),
           key = id ?? newId("shift");
         if (id && !rules.shifts.some((s) => s.id === id)) fail("NOT_FOUND", "Shift was not found.", 404);
         rules.shifts = [...rules.shifts.filter((s) => s.id !== key), { ...input, id: key }];
         await r.saveDocument("attendance_rules", "attendance_rules", rules);
         return { id: key };
-      }),
-    shiftAction: (ctx: CommandContext, id: string, action: "delete" | "default") =>
-      timeCommand(prisma, ctx, `attendance.shift.${action}`, async (r) => {
+      });
+    },
+    shiftAction: async (ctx: CommandContext, id: string, action: "delete" | "default") => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, `attendance.shift.${action}`, async (r) => {
         const rules = await attendanceRules(r);
         if (!rules.shifts.some((s) => s.id === id)) fail("NOT_FOUND", "Shift was not found.", 404);
         if (action === "default") rules.defaultShiftId = id;
@@ -590,9 +652,11 @@ export function createTimeConfigService(prisma: PrismaClient) {
         }
         await r.saveDocument("attendance_rules", "attendance_rules", rules);
         return { ok: true };
-      }),
-    departmentShift: (ctx: CommandContext, department: string, shiftId: string) =>
-      timeCommand(prisma, ctx, "attendance.department_shift.save", async (r) => {
+      });
+    },
+    departmentShift: async (ctx: CommandContext, department: string, shiftId: string) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "attendance.department_shift.save", async (r) => {
         const rules = await attendanceRules(r);
         if (!(await r.departments()).some((d) => d.name === department) || !rules.shifts.some((s) => s.id === shiftId))
           fail("INVALID_REFERENCE", "Choose an active department and shift.");
@@ -602,37 +666,47 @@ export function createTimeConfigService(prisma: PrismaClient) {
         ];
         await r.saveDocument("attendance_rules", "attendance_rules", rules);
         return { ok: true };
-      }),
-    overtime: (ctx: CommandContext, input: z.infer<typeof overtimeInputSchema>) =>
-      timeCommand(prisma, ctx, "attendance.overtime.save", async (r) => {
+      });
+    },
+    overtime: async (ctx: CommandContext, input: z.infer<typeof overtimeInputSchema>) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "attendance.overtime.save", async (r) => {
         const rules = await attendanceRules(r);
         await r.saveDocument("attendance_rules", "attendance_rules", { ...rules, overtime: input });
         return { ok: true };
-      }),
-    lateEarly: (ctx: CommandContext, input: z.infer<typeof lateEarlyInputSchema>) =>
-      timeCommand(prisma, ctx, "attendance.late_early.save", async (r) => {
+      });
+    },
+    lateEarly: async (ctx: CommandContext, input: z.infer<typeof lateEarlyInputSchema>) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "attendance.late_early.save", async (r) => {
         const rules = await attendanceRules(r);
         await r.saveDocument("attendance_rules", "attendance_rules", { ...rules, lateEarly: input });
         return { ok: true };
-      }),
-    site: (ctx: CommandContext, input: z.infer<typeof officeSiteInputSchema>, id?: string) =>
-      timeCommand(prisma, ctx, "attendance.site.save", async (r) => {
+      });
+    },
+    site: async (ctx: CommandContext, input: z.infer<typeof officeSiteInputSchema>, id?: string) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "attendance.site.save", async (r) => {
         const rules = await attendanceRules(r),
           key = id ?? newId("site");
         if (id && !rules.sites.some((s) => s.id === id)) fail("NOT_FOUND", "Office site was not found.", 404);
         rules.sites = [...rules.sites.filter((s) => s.id !== key), { ...input, id: key }];
         await r.saveDocument("attendance_rules", "attendance_rules", rules);
         return { id: key };
-      }),
-    deleteSite: (ctx: CommandContext, id: string) =>
-      timeCommand(prisma, ctx, "attendance.site.delete", async (r) => {
+      });
+    },
+    deleteSite: async (ctx: CommandContext, id: string) => {
+      orgWide(ctx);
+      return timeCommand(prisma, ctx, "attendance.site.delete", async (r) => {
         const rules = await attendanceRules(r);
         if (!rules.sites.some((s) => s.id === id)) fail("NOT_FOUND", "Office site was not found.", 404);
         rules.sites = rules.sites.filter((s) => s.id !== id);
         await r.saveDocument("attendance_rules", "attendance_rules", rules);
         return { ok: true };
-      }),
-    async address(query: string) {
+      });
+    },
+    async address(ctx: CommandContext, query: string) {
+      orgWide(ctx);
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(query)}`,
         { headers: { "User-Agent": "GTFHR/1.0 office-location-configuration" }, signal: AbortSignal.timeout(5000) },
@@ -658,10 +732,15 @@ export async function employeeAttendanceMonth(
   employeeId: string,
   month: string,
 ): Promise<AttendanceMonth> {
-  if (!can(ctx.actor, "report.read") && !can(ctx.actor, "payroll.prepare") && !can(ctx.actor, "payroll.approve"))
-    fail("FORBIDDEN", "You cannot read organization attendance.", 403);
-  await employeeOf(createTimeRepository(prisma), employeeId);
-  return classifiedMonth(createTimeRepository(prisma), employeeId, month);
+  const caps = ["report.read", "payroll.prepare", "payroll.approve"] as const;
+  if (!caps.some((cap) => can(ctx.actor, cap))) fail("FORBIDDEN", "You cannot read organization attendance.", 403);
+  const repo = createTimeRepository(prisma);
+  await employeeOf(repo, employeeId);
+  // BE-003: a department-scoped reader only reaches employees of their departments (404 outside, no probing).
+  let inScope = false;
+  for (const cap of caps) if (!inScope) inScope = await administers(repo, ctx.actor, cap, employeeId);
+  if (!inScope) fail("EMPLOYEE_NOT_FOUND", "Employee was not found.", 404);
+  return classifiedMonth(repo, employeeId, month);
 }
 
 async function classifiedMonth(repo: TimeRepository, employeeId: string, month: string): Promise<AttendanceMonth> {

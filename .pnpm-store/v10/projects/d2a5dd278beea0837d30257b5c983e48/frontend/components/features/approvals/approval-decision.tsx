@@ -5,13 +5,14 @@ import { AppIcon } from "@/components/ui/app-icon";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/display";
 import { FormField, TextArea, describedBy } from "@/components/ui/field";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { decideApprovalAction } from "@/lib/actions/approvals";
 
 /** Versioned decision. Reject requires a reason; success waits for the server. */
 export function ApprovalDecision({ id, version, requester }: { id: string; version: number; requester: string }) {
   const [choice, setChoice] = useState<"approve" | "reject" | null>(null);
-  const { state, submit, pending, fieldError, formError } = useCommand(decideApprovalAction);
+  const { formRef, draft, state, submit, pending, fieldError, formError } = useCommand(decideApprovalAction, { draftKey: `approval.decide:${id}` });
 
   if (state.status === "success")
     return (
@@ -21,7 +22,8 @@ export function ApprovalDecision({ id, version, requester }: { id: string; versi
     );
 
   return (
-    <form onSubmit={submit} className="form decision-form" noValidate>
+    <form ref={formRef} onSubmit={submit} className="form decision-form" noValidate>
+      <DraftNotice draft={draft} />
       <input type="hidden" name="approvalId" value={id} />
       <input type="hidden" name="expectedVersion" value={version} />
       <FormField

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, KeyValueList } from "@/components/ui/display";
 import { FormField, TextArea, describedBy } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
+import { DraftNotice } from "@/components/features/drafts/draft-notice";
 import { useCommand } from "@/hooks/use-command";
 import { payrollCommandAction } from "@/lib/actions/payroll";
 import type { PayrollCommand } from "@/types/payroll";
@@ -29,7 +30,7 @@ const copy: Record<PayrollCommand, { button: string; title: string; confirm: str
 
 export function PayrollRunActions({ commands, facts }: { commands: PayrollCommand[]; facts: RunFacts }) {
   const [active, setActive] = useState<PayrollCommand | null>(null);
-  const { submit, pending, fieldError, formError } = useCommand(payrollCommandAction, { onSuccess: () => setActive(null) });
+  const { formRef, draft, submit, pending, fieldError, formError } = useCommand(payrollCommandAction, { draftKey: active ? `payroll.command:${facts.runId}:${active}` : null, onSuccess: () => setActive(null) });
   const text = active ? copy[active] : null;
   return (
     <>
@@ -47,7 +48,8 @@ export function PayrollRunActions({ commands, facts }: { commands: PayrollComman
         dismissible={!pending}
       >
         {active && text && (
-          <form onSubmit={submit} className="form" noValidate>
+          <form ref={formRef} onSubmit={submit} className="form" noValidate>
+            <DraftNotice draft={draft} />
             <input type="hidden" name="runId" value={facts.runId} />
             <input type="hidden" name="command" value={active} />
             <input type="hidden" name="expectedRevision" value={facts.revision} />

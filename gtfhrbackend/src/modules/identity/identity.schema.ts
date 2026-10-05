@@ -4,6 +4,8 @@ export const roleInput = z.object({
   role: roleSchema,
   reason: z.string().trim().min(5).max(500),
   expiresOn: z.iso.date().nullish(),
+  /** Grant only: limit an HR/payroll role to these departments; omit or empty = organization-wide. */
+  departmentIds: z.array(z.string().min(1).max(60)).max(50).default([]),
 });
 export const disableInput = z.object({ reason: z.string().trim().min(5).max(500) });
 export const recoveryInput = z.object({ email: z.email().toLowerCase().max(254) });

@@ -1,8 +1,10 @@
 import { z } from "zod";
-import type { TimeWorkflow } from "@prisma/client";
+import type { Prisma, TimeWorkflow } from "@prisma/client";
 import { AppError } from "../../core/errors/AppError.js";
 import { personRef } from "../../core/people/person-ref.js";
 import { can, type AuthenticatedActor } from "../../core/security/actor.js";
+import type { Capability } from "../../core/security/capabilities.js";
+import { departmentInScope, employeeScopeWhere, hasAdministrativeReach, isOrgWide } from "../../core/security/scope.js";
 import { addDays, daysBetween, todayInOrgZone, weekdayOf, toIsoDate } from "../../utils/date.js";
 import { newId } from "../../core/database/ids.js";
 import { attendanceRulesSchema, holidayRecordSchema, leaveTypeConfigSchema } from "../../contracts/hr-config.js";
@@ -130,19 +132,45 @@ export async function employeeCalendar(repo: TimeRepository, employeeId: string,
   );
 }
 
+/**
+ * People the actor may see in time workflows (BE-003): HR reach (`employee.read`) covers the grant's departments
+ * (organization-wide grants see everyone); managers always keep their own direct reports; everyone else sees
+ * themselves (or, for calendars, their department).
+ */
 export async function scopedPeople(repo: TimeRepository, actor: AuthenticatedActor, departmentForEmployee = false) {
-  if (can(actor, "employee.read")) return repo.people();
+  const own: Prisma.EmployeeWhereInput[] = [{ managerId: actor.employeeId }, { id: actor.employeeId }];
+  if (isOrgWide(actor, "employee.read")) return repo.people();
+  if (hasAdministrativeReach(actor, "employee.read"))
+    return repo.people({ OR: [employeeScopeWhere(actor, "employee.read"), ...own] });
   if (can(actor, "attendance.read.team") || can(actor, "approval.decide") || can(actor, "timesheet.approve"))
-    return repo.people({ OR: [{ managerId: actor.employeeId }, { id: actor.employeeId }] });
+    return repo.people({ OR: own });
   const e = await employeeOf(repo, actor.employeeId);
   return repo.people(departmentForEmployee ? { departmentId: e.departmentId } : { id: actor.employeeId });
 }
-export async function canDecide(repo: TimeRepository, actor: AuthenticatedActor, row: TimeWorkflow): Promise<boolean> {
-  if (row.employeeId === actor.employeeId) return false;
-  if (row.kind === "timesheet" && !can(actor, "timesheet.approve")) return false;
-  if (row.kind !== "timesheet" && !can(actor, "approval.decide")) return false;
-  if (row.kind === "encashment") return can(actor, "employee.update");
-  if (can(actor, "employee.update") || row.approverId === actor.employeeId) return true;
+/** True when an HR/payroll capability reaches this employee's department (never through employee/manager roles). */
+export async function administers(
+  repo: TimeRepository,
+  actor: AuthenticatedActor,
+  capability: Capability,
+  employeeId: string,
+): Promise<boolean> {
+  if (!hasAdministrativeReach(actor, capability)) return false;
+  if (isOrgWide(actor, capability)) return true;
+  const e = await repo.employee(employeeId);
+  return !!e && departmentInScope(actor, capability, e.departmentId);
+}
+/** HR acting on someone else's record: 404 outside the grant's departments so other departments cannot be probed. */
+export async function requireAdministers(
+  repo: TimeRepository,
+  actor: AuthenticatedActor,
+  capability: Capability,
+  employeeId: string,
+): Promise<void> {
+  if (!can(actor, capability)) fail("FORBIDDEN", "You don't have access to this.", 403);
+  if (!(await administers(repo, actor, capability, employeeId)))
+    fail("EMPLOYEE_NOT_FOUND", "Employee was not found.", 404);
+}
+async function delegatedTo(repo: TimeRepository, actor: AuthenticatedActor, row: TimeWorkflow) {
   const today = todayInOrgZone();
   const delegations = await repo.workflows({
     kind: "delegation",
@@ -154,8 +182,27 @@ export async function canDecide(repo: TimeRepository, actor: AuthenticatedActor,
   });
   return delegations.some((d) => delegationInputSchema.parse(d.payload).workflows.some((kind) => kind === row.kind));
 }
+export async function canDecide(repo: TimeRepository, actor: AuthenticatedActor, row: TimeWorkflow): Promise<boolean> {
+  if (row.employeeId === actor.employeeId) return false;
+  if (row.kind === "timesheet" && !can(actor, "timesheet.approve")) return false;
+  if (row.kind !== "timesheet" && !can(actor, "approval.decide")) return false;
+  const hr = await administers(repo, actor, "employee.update", row.employeeId);
+  if (row.kind === "encashment") return hr;
+  if (hr || row.approverId === actor.employeeId) return true;
+  return delegatedTo(repo, actor, row);
+}
 export async function requireDecision(repo: TimeRepository, actor: AuthenticatedActor, row: TimeWorkflow) {
-  if (!(await canDecide(repo, actor, row))) fail("FORBIDDEN", "You cannot decide this request.", 403);
+  if (await canDecide(repo, actor, row)) return;
+  // An HR operator outside the requester's departments (and not the approver or a delegate) must not learn the row exists.
+  if (
+    hasAdministrativeReach(actor, "employee.update") &&
+    row.employeeId !== actor.employeeId &&
+    row.approverId !== actor.employeeId &&
+    !(await administers(repo, actor, "employee.update", row.employeeId)) &&
+    !(await delegatedTo(repo, actor, row))
+  )
+    fail("REQUEST_NOT_FOUND", "Request was not found.", 404);
+  fail("FORBIDDEN", "You cannot decide this request.", 403);
 }
 export function requireOwner(actor: AuthenticatedActor, row: TimeWorkflow) {
   if (row.employeeId !== actor.employeeId) fail("NOT_FOUND", "Request was not found.", 404);

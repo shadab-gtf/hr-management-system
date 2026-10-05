@@ -37,7 +37,7 @@ export function CycleSheet({ cycle, departments, today }: { cycle?: PerfCycle; d
     calibration: { start: addDays(end, 21), end: addDays(end, 30) },
   };
   return (
-    <FormSheet
+    <FormSheet draftKey={cycle ? `perf-cycle.edit:${cycle.id}` : "perf-cycle.new"}
       action={saveCycleAction}
       title={cycle ? `Edit ${cycle.name}` : "New review cycle"}
       description={launched ? "Launched cycles keep their period, eligibility, departments and weightage; names, labels, guideline and dates can change." : "Saved as a draft. Nothing is visible to employees until you launch it."}
@@ -153,7 +153,7 @@ export function CalibrationLockButton({ cycleId, locked }: { cycleId: string; lo
 export function CalibrateSheet({ reviewId, version, name, managerRating, finalRating, scale }: { reviewId: string; version: number; name: string; managerRating: number | null; finalRating: number | null; scale: { rating: number; label: string }[] }) {
   const p = `cal-${reviewId}`;
   return (
-    <FormSheet action={calibrateAction} title={`Final rating · ${name}`} description={`Manager rating: ${managerRating ?? "—"}. Every change is audited with your reason.`} trigger="Set final rating" triggerVariant="secondary" triggerSize="sm" submitLabel="Save final rating">
+    <FormSheet draftKey={`perf.calibrate:${reviewId}`} action={calibrateAction} title={`Final rating · ${name}`} description={`Manager rating: ${managerRating ?? "—"}. Every change is audited with your reason.`} trigger="Set final rating" triggerVariant="secondary" triggerSize="sm" submitLabel="Save final rating">
       {(fieldError) => (
         <>
           <input type="hidden" name="reviewId" value={reviewId} />
@@ -173,7 +173,7 @@ export function CalibrateSheet({ reviewId, version, name, managerRating, finalRa
 export function ReassignSheet({ reviewId, name, current, reviewers }: { reviewId: string; name: string; current: PersonRef | null; reviewers: PersonRef[] }) {
   const p = `ra-${reviewId}`;
   return (
-    <FormSheet action={reassignReviewerAction} title={`Reviewer for ${name}`} description={`Currently ${current?.name ?? "unassigned"}. Any manager draft is discarded — drafts never move to another reviewer.`} trigger="Reassign" triggerVariant="ghost" triggerSize="sm" submitLabel="Reassign reviewer">
+    <FormSheet draftKey={`perf.reassign:${reviewId}`} action={reassignReviewerAction} title={`Reviewer for ${name}`} description={`Currently ${current?.name ?? "unassigned"}. Any manager draft is discarded — drafts never move to another reviewer.`} trigger="Reassign" triggerVariant="ghost" triggerSize="sm" submitLabel="Reassign reviewer">
       {(fieldError) => (
         <>
           <input type="hidden" name="reviewId" value={reviewId} />
@@ -192,7 +192,7 @@ export function ReassignSheet({ reviewId, name, current, reviewers }: { reviewId
 export function CompetencySheet({ competency }: { competency?: PerfCompetency }) {
   const p = competency ? `co-${competency.id}` : "co-new";
   return (
-    <FormSheet action={saveCompetencyAction} title={competency ? `Edit ${competency.name}` : "Add competency"} description="Rated in every review from the next save onward." trigger={competency ? "Edit" : "Add competency"} triggerVariant={competency ? "ghost" : "secondary"} triggerSize="sm" submitLabel="Save competency">
+    <FormSheet draftKey={competency ? `competency.edit:${competency.id}` : "competency.new"} action={saveCompetencyAction} title={competency ? `Edit ${competency.name}` : "Add competency"} description="Rated in every review from the next save onward." trigger={competency ? "Edit" : "Add competency"} triggerVariant={competency ? "ghost" : "secondary"} triggerSize="sm" submitLabel="Save competency">
       {(fieldError) => (
         <>
           {competency && <input type="hidden" name="id" value={competency.id} />}

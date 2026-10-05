@@ -3,7 +3,14 @@ import { idempotent } from "../../core/database/idempotency.js";
 import { newId, nextReference } from "../../core/database/ids.js";
 import { AppError } from "../../core/errors/AppError.js";
 import { assertVersion } from "../../core/http/request-context.js";
-import { can, requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import { requireCapability, type AuthenticatedActor } from "../../core/security/actor.js";
+import {
+  assertEmployeeInScope,
+  departmentInScope,
+  hasAdministrativeReach,
+  isOrgWide,
+  requireOrgWide,
+} from "../../core/security/scope.js";
 import { personRef } from "../../core/people/person-ref.js";
 import { daysBetween, todayInOrgZone, toIsoDate, fromIsoDate } from "../../utils/date.js";
 import { inr, paiseFromAmount } from "../../utils/money.js";
@@ -88,7 +95,8 @@ export function createStatutoryService(prisma: PrismaClient) {
   const repository = createStatutoryRepository(prisma);
   const service = {
     async setup(actor: AuthenticatedActor): Promise<StatutorySetup> {
-      requireCapability(actor, "statutory.manage");
+      // Entities, locations and statutory rules are organization configuration.
+      requireOrgWide(actor, "statutory.manage");
       const [config, employees, audit] = await Promise.all([
         repository.configuration(),
         repository.employees(),
@@ -146,7 +154,7 @@ export function createStatutoryService(prisma: PrismaClient) {
           event: row.action,
         })),
         settingsVersion: config?.version ?? 1,
-        canManage: can(actor, "statutory.manage"),
+        canManage: isOrgWide(actor, "statutory.manage"),
       };
     },
     async employees(actor: AuthenticatedActor): Promise<StatutoryEmployees> {
@@ -157,8 +165,12 @@ export function createStatutoryService(prisma: PrismaClient) {
         repository.configuration(),
       ]);
       const policy = loadPolicy(config?.settings);
+      // Per-employee statutory records: limited to the departments the grant covers (BE-003).
       const rows: StatutoryEmployees["rows"] = employees
-        .filter((employee) => employee.status !== "exited")
+        .filter(
+          (employee) =>
+            employee.status !== "exited" && departmentInScope(actor, "statutory.manage", employee.departmentId),
+        )
         .map((employee) => {
           const profile = profiles.find((row) => row.employeeId === employee.id);
           const pfStatus =
@@ -203,12 +215,13 @@ export function createStatutoryService(prisma: PrismaClient) {
           panMissing: rows.filter((row) => !row.panMasked).length,
           bankPending: rows.filter((row) => row.bank.status !== "verified").length,
         },
-        canEdit: can(actor, "statutory.manage"),
-        canVerifyBank: can(actor, "payment.export"),
+        canEdit: hasAdministrativeReach(actor, "statutory.manage"),
+        canVerifyBank: hasAdministrativeReach(actor, "payment.export"),
       };
     },
     async hub(actor: AuthenticatedActor, requested?: string): Promise<StatutoryHub> {
-      requireCapability(actor, "statutory.manage");
+      // Filings and liabilities are per legal entity, across every department: organization-level.
+      requireOrgWide(actor, "statutory.manage");
       const [config, runs, challans, employees] = await Promise.all([
         repository.configuration(),
         repository.runs(),
@@ -408,7 +421,7 @@ export function createStatutoryService(prisma: PrismaClient) {
       };
     },
     saveSettings(actor: AuthenticatedActor, input: PfSettingsInput, expected: number | undefined, requestId: string) {
-      requireCapability(actor, "statutory.manage");
+      requireOrgWide(actor, "statutory.manage");
       return idempotent(
         prisma,
         { actorId: actor.employeeId, key: undefined, command: "statutory.settings" },
@@ -440,7 +453,7 @@ export function createStatutoryService(prisma: PrismaClient) {
       expected: number | undefined,
       requestId: string,
     ) {
-      requireCapability(actor, "statutory.manage");
+      requireOrgWide(actor, "statutory.manage");
       return idempotent(prisma, { actorId: actor.employeeId, key: undefined, command: "statutory.pt" }, async (tx) => {
         const repo = createStatutoryRepository(tx);
         await repo.lock("policy");
@@ -493,6 +506,7 @@ export function createStatutoryService(prisma: PrismaClient) {
         prisma,
         { actorId: actor.employeeId, key: undefined, command: "statutory.profile" },
         async (tx) => {
+          await assertEmployeeInScope(tx, actor, "statutory.manage", employeeId);
           const repo = createStatutoryRepository(tx);
           if (employeeId !== input.employeeId || Number(input.vpfPercent) > 88)
             throw new AppError(400, "VALIDATION_ERROR", "Check employee and VPF percentage.");
@@ -521,6 +535,7 @@ export function createStatutoryService(prisma: PrismaClient) {
         prisma,
         { actorId: actor.employeeId, key: undefined, command: "statutory.bank" },
         async (tx) => {
+          await assertEmployeeInScope(tx, actor, "payment.export", employeeId);
           const repo = createStatutoryRepository(tx);
           await repo.lock(`bank:${employeeId}`);
           const profile = await repo.profile(employeeId);
@@ -547,7 +562,7 @@ export function createStatutoryService(prisma: PrismaClient) {
       );
     },
     async challan(actor: AuthenticatedActor, input: ChallanInput, key: string | undefined, requestId: string) {
-      requireCapability(actor, "statutory.manage");
+      requireOrgWide(actor, "statutory.manage");
       const period = input.obligationKey.split("|").at(-1);
       if (!period || !/^\d{4}-\d{2}$/.test(period))
         throw new AppError(400, "INVALID_OBLIGATION", "Select a statutory obligation.");
@@ -605,7 +620,8 @@ export function createStatutoryService(prisma: PrismaClient) {
     },
     async form16(actor: AuthenticatedActor, fyValue?: string, employeeId?: string): Promise<Form16> {
       const target = employeeId ?? actor.employeeId;
-      requireCapability(actor, target === actor.employeeId ? "payslip.read.self" : "statutory.manage");
+      if (target === actor.employeeId) requireCapability(actor, "payslip.read.self");
+      else await assertEmployeeInScope(prisma, actor, "statutory.manage", target);
       const fy = fyOf(fyValue);
       const [employee, profile, config, runs, issued, challans] = await Promise.all([
         repository.employee(target),
@@ -697,6 +713,7 @@ export function createStatutoryService(prisma: PrismaClient) {
     },
     async form16Status(actor: AuthenticatedActor, value?: string): Promise<Form16Status> {
       requireCapability(actor, "statutory.manage");
+      const orgWide = isOrgWide(actor, "statutory.manage");
       const fy = fyOf(value);
       const [employees, profiles, records, runs, challans] = await Promise.all([
         repository.employees(),
@@ -712,29 +729,32 @@ export function createStatutoryService(prisma: PrismaClient) {
         .flatMap((row) => snapshotsOf(row));
       const closed = todayInOrgZone() > monthEnd(fy.lastMonth);
       const depositedFor = depositedByEmployee(source, challans);
-      const rows: Form16Status["rows"] = employees.map((employee) => {
-        const results = source.filter((row) => row.person.id === employee.id);
-        const tds = results.reduce((sum, row) => sum + row.contributions.tds, 0);
-        const pan = Boolean(profiles.find((row) => row.employeeId === employee.id)?.pan);
-        const generated = records.some((row) => row.employeeId === employee.id);
-        const deposited = results.reduce((sum, row) => sum + depositedFor(row), 0);
-        return {
-          employee: personRef(employee),
-          code: employee.code,
-          pan,
-          tds: inr(tds),
-          deposited: inr(deposited),
-          status: generated
-            ? "generated"
-            : !tds
-              ? "no_tds"
-              : !pan
-                ? "pan_missing"
-                : closed && deposited >= tds
-                  ? "ready"
-                  : "provisional",
-        };
-      });
+      // TDS allocation above uses every deductee; the rows shown are limited to the departments in scope.
+      const rows: Form16Status["rows"] = employees
+        .filter((employee) => departmentInScope(actor, "statutory.manage", employee.departmentId))
+        .map((employee) => {
+          const results = source.filter((row) => row.person.id === employee.id);
+          const tds = results.reduce((sum, row) => sum + row.contributions.tds, 0);
+          const pan = Boolean(profiles.find((row) => row.employeeId === employee.id)?.pan);
+          const generated = records.some((row) => row.employeeId === employee.id);
+          const deposited = results.reduce((sum, row) => sum + depositedFor(row), 0);
+          return {
+            employee: personRef(employee),
+            code: employee.code,
+            pan,
+            tds: inr(tds),
+            deposited: inr(deposited),
+            status: generated
+              ? "generated"
+              : !tds
+                ? "no_tds"
+                : !pan
+                  ? "pan_missing"
+                  : closed && deposited >= tds
+                    ? "ready"
+                    : "provisional",
+          };
+        });
       const latest = records[0];
       return {
         fy: fy.key,
@@ -745,16 +765,19 @@ export function createStatutoryService(prisma: PrismaClient) {
           ? (employees.find((row) => row.id === latest.generatedBy)?.name ?? latest.generatedBy)
           : null,
         canGenerate:
+          orgWide &&
           closed &&
           rows.some((row) => row.status === "ready") &&
           !rows.some((row) => row.status === "pan_missing" || row.status === "provisional"),
-        generateBlockedReason: !closed
-          ? "The financial year is still open."
-          : rows.some((row) => row.status === "pan_missing")
-            ? "Complete missing PAN records."
-            : rows.some((row) => row.status === "provisional")
-              ? "Record all TDS deposits before generating certificates."
-              : null,
+        generateBlockedReason: !orgWide
+          ? "Generating certificates needs organization-wide access."
+          : !closed
+            ? "The financial year is still open."
+            : rows.some((row) => row.status === "pan_missing")
+              ? "Complete missing PAN records."
+              : rows.some((row) => row.status === "provisional")
+                ? "Record all TDS deposits before generating certificates."
+                : null,
         counts: {
           generated: rows.filter((row) => row.status === "generated").length,
           noTds: rows.filter((row) => row.status === "no_tds").length,
@@ -765,7 +788,7 @@ export function createStatutoryService(prisma: PrismaClient) {
       };
     },
     async generateForm16(actor: AuthenticatedActor, value: string, requestId: string) {
-      requireCapability(actor, "statutory.manage");
+      requireOrgWide(actor, "statutory.manage");
       const status = await service.form16Status(actor, value);
       if (!status.canGenerate)
         throw new AppError(
@@ -810,7 +833,8 @@ export function createStatutoryService(prisma: PrismaClient) {
       );
     },
     async exportRun(actor: AuthenticatedActor, id: string, bank: boolean, requestId: string) {
-      requireCapability(actor, bank ? "payment.export" : "payroll.prepare");
+      // Whole-run register / bank files are organization-level.
+      requireOrgWide(actor, bank ? "payment.export" : "payroll.prepare");
       return idempotent(
         prisma,
         { actorId: actor.employeeId, key: undefined, command: bank ? "bank.export" : "register.export" },
@@ -884,7 +908,7 @@ export function createStatutoryService(prisma: PrismaClient) {
       entityId: string | undefined,
       requestId: string,
     ) {
-      requireCapability(actor, "statutory.manage");
+      requireOrgWide(actor, "statutory.manage");
       return idempotent(
         prisma,
         { actorId: actor.employeeId, key: undefined, command: `statutory.export:${file}:${month}` },

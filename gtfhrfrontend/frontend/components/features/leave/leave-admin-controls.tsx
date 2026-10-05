@@ -33,7 +33,7 @@ export function LedgerEmployeePicker({ people, selected }: { people: PersonRef[]
 export function AdjustBalanceSheet({ employee, types }: { employee: PersonRef; types: { id: string; name: string; balance: string }[] }) {
   const [direction, setDirection] = useState("credit");
   return (
-    <FormSheet action={adjustBalanceAction} title="Adjust leave balance" description={`${employee.name} · recorded in the ledger and the audit log; the employee is notified.`} trigger="Adjust balance" triggerVariant="secondary" triggerSize="sm" icon="edit" submitLabel="Record adjustment">
+    <FormSheet draftKey={`leave.adjust:${employee.id}`} action={adjustBalanceAction} title="Adjust leave balance" description={`${employee.name} · recorded in the ledger and the audit log; the employee is notified.`} trigger="Adjust balance" triggerVariant="secondary" triggerSize="sm" icon="edit" submitLabel="Record adjustment">
       {(fieldError) => (
         <>
           <input type="hidden" name="employeeId" value={employee.id} />
