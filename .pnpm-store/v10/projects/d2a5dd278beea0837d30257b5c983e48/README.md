@@ -20,7 +20,20 @@ GTF_API_MODE=live
 GTF_API_BASE_URL=https://your-public-hr-api.example.com
 ```
 
-`GTF_API_BASE_URL` is the public HTTPS origin of the backend, without `/api/v1` (the frontend adds that prefix). Production Vercel traffic always uses live mode; mock mode cannot be enabled in production. The Next.js build can complete without runtime environment variables, but live API requests will fail explicitly until a valid HTTPS `GTF_API_BASE_URL` is configured in Vercel. Optional settings such as `GTF_API_TIMEOUT_MS` and `GTF_SESSION_COOKIE` use the defaults in `.env.example`.
+`GTF_API_BASE_URL` is the public HTTPS origin of the backend, without `/api/v1` (the frontend adds that prefix). Production Vercel traffic uses live mode by default. The Next.js build can complete without runtime environment variables, but live API requests will fail explicitly until a valid HTTPS `GTF_API_BASE_URL` is configured in Vercel. Optional settings such as `GTF_API_TIMEOUT_MS` and `GTF_SESSION_COOKIE` use the defaults in `.env.example`.
+
+### Show the existing mock demo on Vercel
+
+The mock backend and demo personas already exist in the app. To use them on a **demo-only** Vercel deployment, open **Project → Settings → Environment Variables**, add these two variables for the deployment environment, then redeploy:
+
+```dotenv
+GTF_DEMO_MODE=true
+GTF_API_MODE=mock
+```
+
+On the Production environment, both settings are required to opt in; setting `GTF_API_MODE=mock` by itself does **not** disable live mode. The login will show the existing demo profiles and the workspace will display its “Demo data” badge. To restore live mode, remove `GTF_DEMO_MODE` (or set it to `false`), set `GTF_API_MODE=live`, configure `GTF_API_BASE_URL`, and redeploy. Never enable this on a deployment used for real employee data.
+
+Mock records are synthetic and stored in process memory. On Vercel, serverless instances do not share that memory, so demo changes may reset or differ between requests/instances; use this for a product walkthrough, not persistent testing or HR operations. A Vercel Preview deployment with `GTF_API_MODE=mock` is preferable if you want to keep the Production deployment live.
 
 The backend must also be deployed and reachable from Vercel. Configure its production `APP_BASE_URL` and `CORS_ORIGIN` for the frontend's stable HTTPS domain, and provision its production database, secrets and organization data independently. Do not expose backend credentials through `NEXT_PUBLIC_*` variables. Configure Preview with a separate non-production backend if preview deployments need to sign in; do not point previews at production HR data by default.
 
