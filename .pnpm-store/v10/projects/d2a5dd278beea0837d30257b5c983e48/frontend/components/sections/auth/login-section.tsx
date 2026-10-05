@@ -19,6 +19,7 @@ export function LoginSection({
   signedOut,
   invalid,
   passwordLogin = false,
+  apiUnavailable = false,
   error,
 }: {
   /** Demo profiles (mock mode only); ids are the mock persona keys, including the super admin. */
@@ -27,6 +28,7 @@ export function LoginSection({
   signedOut: boolean;
   invalid: boolean;
   passwordLogin?: boolean;
+  apiUnavailable?: boolean;
   error?: string;
 }) {
   const demo = personas.length > 0;
@@ -54,6 +56,12 @@ export function LoginSection({
             You’ve been signed out.
           </Alert>
         )}
+        {apiUnavailable && (
+          <Alert tone="danger" live>
+            Sign-in is temporarily unavailable because the HR service isn’t
+            configured. Contact your system administrator.
+          </Alert>
+        )}
         {passwordLogin && error && error !== "persona" && (
           <Alert tone="danger" live>
             {loginErrors[error] ?? loginErrors.credentials}
@@ -65,79 +73,83 @@ export function LoginSection({
           </Alert>
         )}
 
-        <form action={signInAction} className="form">
-          {next && <input type="hidden" name="next" value={next} />}
-          {passwordLogin ? (
-            <>
-              <div className="form-field">
-                <label htmlFor="login-email">Work email</label>
-                <input
-                  id="login-email"
-                  className="input"
-                  name="email"
-                  type="email"
-                  autoComplete="username"
-                  inputMode="email"
-                  required
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="login-password">Password</label>
-                <input
-                  id="login-password"
-                  className="input"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  minLength={8}
-                  required
-                />
-              </div>
-            </>
-          ) : demo ? (
-            <fieldset className="persona-list">
-              <legend>Choose a demo profile</legend>
-              {personas.map((persona, index) => (
-                <label key={persona.id} className="persona-option">
+        {!apiUnavailable && (
+          <form action={signInAction} className="form">
+            {next && <input type="hidden" name="next" value={next} />}
+            {passwordLogin ? (
+              <>
+                <div className="form-field">
+                  <label htmlFor="login-email">Work email</label>
                   <input
-                    type="radio"
-                    name="persona"
-                    value={persona.id}
-                    defaultChecked={index === 0}
+                    id="login-email"
+                    className="input"
+                    name="email"
+                    type="email"
+                    autoComplete="username"
+                    inputMode="email"
+                    required
                   />
-                  <Avatar
-                    initials={initialsOf(persona.name)}
-                    seed={persona.id}
+                </div>
+                <div className="form-field">
+                  <label htmlFor="login-password">Password</label>
+                  <input
+                    id="login-password"
+                    className="input"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    minLength={8}
+                    required
                   />
-                  <span className="persona-text">
-                    <strong>{persona.title}</strong>
-                    <span>
-                      {persona.name} · {persona.summary}
+                </div>
+              </>
+            ) : demo ? (
+              <fieldset className="persona-list">
+                <legend>Choose a demo profile</legend>
+                {personas.map((persona, index) => (
+                  <label key={persona.id} className="persona-option">
+                    <input
+                      type="radio"
+                      name="persona"
+                      value={persona.id}
+                      defaultChecked={index === 0}
+                    />
+                    <Avatar
+                      initials={initialsOf(persona.name)}
+                      seed={persona.id}
+                    />
+                    <span className="persona-text">
+                      <strong>{persona.title}</strong>
+                      <span>
+                        {persona.name} · {persona.summary}
+                      </span>
                     </span>
-                  </span>
-                  <AppIcon name="check" className="persona-check" />
-                </label>
-              ))}
-            </fieldset>
-          ) : null}
-          <button type="submit" className="button button--primary auth-submit">
-            <AppIcon name="login" size={20} />
-            {passwordLogin
-              ? "Sign in"
-              : demo
-                ? "Continue"
-                : "Continue with GTF single sign-on"}
-          </button>
-        </form>
+                    <AppIcon name="check" className="persona-check" />
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+            <button type="submit" className="button button--primary auth-submit">
+              <AppIcon name="login" size={20} />
+              {passwordLogin
+                ? "Sign in"
+                : demo
+                  ? "Continue"
+                  : "Continue with GTF single sign-on"}
+            </button>
+          </form>
+        )}
 
-        <p className="auth-foot">
+        {!apiUnavailable && (
+          <p className="auth-foot">
           <AppIcon name="shield" size={16} />
           {passwordLogin
             ? "Signed-in sessions are stored in secure, httpOnly cookies. Access follows your HR role."
             : demo
               ? "Demo mode: all people and records are synthetic. Nothing is sent to a live HR system."
               : "Protected by GTF single sign-on and multi-factor authentication."}
-        </p>
+          </p>
+        )}
       </div>
     </main>
   );

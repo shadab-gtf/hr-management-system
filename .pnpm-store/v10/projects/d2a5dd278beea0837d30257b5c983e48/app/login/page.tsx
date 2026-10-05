@@ -11,7 +11,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (await getSession()) redirect("/dashboard");
+  const apiUnavailable = apiConfig.mode === "live" && !apiConfig.baseUrl;
+  if (!apiUnavailable && (await getSession())) redirect("/dashboard");
   const params = await searchParams;
   const next = typeof params.next === "string" && params.next.startsWith("/") ? params.next : undefined;
   return (
@@ -21,6 +22,7 @@ export default async function LoginPage({
       signedOut={params.signedOut === "1"}
       invalid={params.error === "persona"}
       passwordLogin={apiConfig.mode !== "mock"}
+      apiUnavailable={apiUnavailable}
       error={typeof params.error === "string" ? params.error : undefined}
     />
   );
