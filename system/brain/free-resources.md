@@ -22,7 +22,7 @@ Required software must be free/open source and self-hostable without mandatory s
 | pg-boss | MIT | [License](https://raw.githubusercontent.com/timgit/pg-boss/master/LICENSE) |
 | openid-client | MIT | [License](https://raw.githubusercontent.com/panva/openid-client/main/LICENSE.md) |
 | decimal.js | MIT | [License](https://raw.githubusercontent.com/MikeMcl/decimal.js/master/LICENCE.md) |
-| Nodemailer | MIT-0 | [License](https://raw.githubusercontent.com/nodemailer/nodemailer/master/LICENSE) |
+| Resend Node.js SDK | MIT | [License](https://raw.githubusercontent.com/resend/resend-node/main/LICENSE) |
 | Pino | MIT | [License](https://raw.githubusercontent.com/pinojs/pino/main/LICENSE) |
 | OpenTelemetry JS | Apache-2.0; exporter/package checks required | [License](https://github.com/open-telemetry/opentelemetry-js/blob/main/LICENSE) |
 | Vitest | MIT | [License](https://raw.githubusercontent.com/vitest-dev/vitest/main/LICENSE) |

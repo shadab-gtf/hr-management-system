@@ -22,7 +22,7 @@ Recorded: 2026-09-28. Exact installed versions and registry integrity hashes are
 
 Source: [Google Fonts repository](https://github.com/google/fonts/tree/main/ofl/googlesans), [Google Sans upstream](https://github.com/googlefonts/googlesans). Google Fonts CSS API supplied the version-70 Latin variable WOFF2: `https://fonts.gstatic.com/s/googlesans/v70/4UasrENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RPjIUvQ.woff2`.
 
-Retained unmodified at `app/fonts/google-sans-latin.woff2`. OFL and trademark notices are served from `public/licenses`. Only Latin is bundled in FE1; other scripts and currency glyphs may use the system fallback until locale subsets are explicitly added. No Google logo glyph or Google branding is used. No font request leaves the app at runtime.
+Retained unmodified at `gtfhrfrontend/app/fonts/google-sans-latin.woff2`. OFL and trademark notices are served from `gtfhrfrontend/public/licenses`. Only Latin is bundled in FE1; other scripts and currency glyphs may use the system fallback until locale subsets are explicitly added. No Google logo glyph or Google branding is used. No font request leaves the app at runtime.
 
 ## Iconsax
 

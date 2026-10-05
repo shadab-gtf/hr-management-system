@@ -1,0 +1,67 @@
+/// Durable, versioned approval aggregate. Payload is validated against the kind's Zod schema.
+model TimeWorkflow {
+  id String @id @db.VarChar(50)
+  reference String @unique @db.VarChar(50)
+  kind String @db.VarChar(30)
+  employeeId String @map("employee_id") @db.VarChar(32)
+  approverId String? @map("approver_id") @db.VarChar(32)
+  state String @default("pending") @db.VarChar(30)
+  startDate String? @map("start_date") @db.VarChar(10)
+  endDate String? @map("end_date") @db.VarChar(10)
+  version Int @default(1)
+  payload Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(6)
+  decidedBy String? @map("decided_by") @db.VarChar(32)
+  decisionNote String? @map("decision_note") @db.VarChar(500)
+  @@index([employeeId,kind,createdAt])
+  @@index([approverId,state,kind])
+  @@index([kind,startDate,endDate])
+  @@map("time_workflows")
+}
+
+/// Policy, roster and project aggregates. Configured business entities, never a mock store.
+model TimeDocument {
+  id String @id @db.VarChar(180)
+  kind String @db.VarChar(30)
+  scope String? @db.VarChar(120)
+  version Int @default(1)
+  payload Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@index([kind,scope])
+  @@map("time_documents")
+}
+
+model TimeAttendance {
+  id String @id @db.VarChar(50)
+  employeeId String @map("employee_id") @db.VarChar(32)
+  date String @db.VarChar(10)
+  firstIn DateTime? @map("first_in") @db.Timestamptz(6)
+  lastOut DateTime? @map("last_out") @db.Timestamptz(6)
+  workedMinutes Int @default(0) @map("worked_minutes")
+  source String @db.VarChar(30)
+  checkInEvidence Json? @map("check_in_evidence")
+  checkOutEvidence Json? @map("check_out_evidence")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@unique([employeeId,date])
+  @@index([date])
+  @@map("time_attendance")
+}
+
+/// Exact half-day credits/debits; reservations are held by pending workflows.
+model TimeLeaveLedger {
+  id String @id @db.VarChar(50)
+  employeeId String @map("employee_id") @db.VarChar(32)
+  leaveTypeId String @map("leave_type_id") @db.VarChar(180)
+  date String @db.VarChar(10)
+  kind String @db.VarChar(30)
+  units Decimal @db.Decimal(8,2)
+  expiresOn String? @map("expires_on") @db.VarChar(10)
+  reference String @db.VarChar(80)
+  note String @db.VarChar(500)
+  actorId String? @map("actor_id") @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([employeeId,leaveTypeId,kind,reference])
+  @@index([employeeId,leaveTypeId,date])
+  @@map("time_leave_ledger")
+}

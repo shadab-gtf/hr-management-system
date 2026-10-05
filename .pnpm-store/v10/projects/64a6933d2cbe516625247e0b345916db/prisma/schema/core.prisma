@@ -1,0 +1,239 @@
+// Platform tables shared by every module. Module agents must NOT change existing fields here; the only allowed
+// edit is appending back-relation fields inside the marked block of `Employee` (one line per relation).
+
+enum EmploymentStatus {
+  onboarding
+  active
+  on_leave
+  notice
+  exited
+}
+
+enum EmploymentType {
+  full_time
+  contract
+  intern
+}
+
+enum Role {
+  employee
+  manager
+  hr_operator
+  payroll_operator
+  payroll_approver
+}
+
+enum MailStatus {
+  queued
+  sent
+  failed
+}
+
+model Organization {
+  id          Int      @id @default(1)
+  name        String   @db.VarChar(120)
+  timezone    String   @default("Asia/Kolkata") @db.VarChar(60)
+  currency    String   @default("INR") @db.VarChar(3)
+  legalEntity String   @map("legal_entity") @db.VarChar(160)
+  payGroup    String   @map("pay_group") @db.VarChar(120)
+  emailDomain String   @map("email_domain") @db.VarChar(120)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organization")
+}
+
+/// Free-form organization settings owned by the platform (e.g. `probation_defaults`).
+model OrganizationSetting {
+  key       String   @id @db.VarChar(100)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organization_settings")
+}
+
+model Department {
+  id             String     @id @db.VarChar(60)
+  name           String     @unique @db.VarChar(60)
+  costCenter     String?    @map("cost_center") @db.VarChar(80)
+  /// Department head (employee id); validated by the organization module.
+  headEmployeeId String?    @map("head_employee_id") @db.VarChar(32)
+  archivedAt     DateTime?  @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  employees      Employee[]
+
+  @@map("departments")
+}
+
+model Location {
+  id         String     @id @db.VarChar(60)
+  name       String     @unique @db.VarChar(60)
+  state      String?    @db.VarChar(80)
+  archivedAt DateTime?  @map("archived_at") @db.Timestamptz(6)
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  employees  Employee[]
+
+  @@map("locations")
+}
+
+model Employee {
+  id             String           @id @db.VarChar(32)
+  code           String           @unique @db.VarChar(32)
+  name           String           @db.VarChar(120)
+  workEmail      String           @unique @map("work_email") @db.VarChar(254)
+  designation    String           @db.VarChar(80)
+  departmentId   String           @map("department_id") @db.VarChar(60)
+  department     Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  locationId     String           @map("location_id") @db.VarChar(60)
+  location       Location         @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  managerId      String?          @map("manager_id") @db.VarChar(32)
+  manager        Employee?        @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  directReports  Employee[]       @relation("EmployeeManager")
+  joinedOn       DateTime         @map("joined_on") @db.Date
+  exitedOn       DateTime?        @map("exited_on") @db.Date
+  status         EmploymentStatus @default(onboarding)
+  employmentType EmploymentType   @map("employment_type")
+  /// Bumped on every photo upload; null means no photo (initials are shown).
+  photoVersion   Int?             @map("photo_version")
+  version        Int              @default(1)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  account         UserAccount?
+  credential      PasswordCredential?
+  roleAssignments RoleAssignment[]
+  notifications   Notification[]
+
+  // --- module back-relations (append one line each; keep this block last) ---
+
+  @@index([managerId])
+  @@index([departmentId])
+  @@index([status])
+  @@map("employees")
+}
+
+/// Sign-in account for an employee. Absent until the employee is invited.
+model UserAccount {
+  employeeId   String    @id @map("employee_id") @db.VarChar(32)
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  disabledAt   DateTime? @map("disabled_at") @db.Timestamptz(6)
+  lastSignInAt DateTime? @map("last_sign_in_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("user_accounts")
+}
+
+model PasswordCredential {
+  employeeId        String    @id @map("employee_id") @db.VarChar(32)
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  passwordHash      String    @map("password_hash") @db.VarChar(100)
+  passwordChangedAt DateTime  @default(now()) @map("password_changed_at") @db.Timestamptz(6)
+  failedAttempts    Int       @default(0) @map("failed_attempts")
+  lockedUntil       DateTime? @map("locked_until") @db.Timestamptz(6)
+
+  @@map("password_credentials")
+}
+
+model RoleAssignment {
+  employeeId String    @map("employee_id") @db.VarChar(32)
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  role       Role
+  grantedBy  String?   @map("granted_by") @db.VarChar(32)
+  reason     String?   @db.VarChar(500)
+  grantedAt  DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  @@id([employeeId, role])
+  @@map("role_assignments")
+}
+
+/// Append-only (UPDATE/DELETE rejected by trigger, prisma/sql/00-core.sql).
+model AuditLog {
+  id              BigInt   @id @default(autoincrement())
+  at              DateTime @default(now()) @db.Timestamptz(6)
+  actorEmployeeId String?  @map("actor_employee_id") @db.VarChar(32)
+  action          String   @db.VarChar(100)
+  entity          String   @db.VarChar(100)
+  entityId        String?  @map("entity_id") @db.VarChar(100)
+  details         Json     @default("{}")
+  requestId       String?  @map("request_id") @db.VarChar(100)
+
+  @@index([entity, entityId, at(sort: Desc)])
+  @@index([actorEmployeeId, at(sort: Desc)])
+  @@index([at(sort: Desc)])
+  @@map("audit_log")
+}
+
+/// Stored result of a command, replayed for the same (actor, Idempotency-Key).
+model IdempotencyKey {
+  actorId   String   @map("actor_id") @db.VarChar(32)
+  key       String   @db.VarChar(200)
+  command   String   @db.VarChar(120)
+  status    Int
+  response  Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([actorId, key])
+  @@index([createdAt])
+  @@map("idempotency_keys")
+}
+
+/// In-app notification. INSERT fires pg_notify('gtf_notifications') on commit (prisma/sql/00-core.sql).
+model Notification {
+  id         String    @id @db.VarChar(40)
+  employeeId String    @map("employee_id") @db.VarChar(32)
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  kind       String    @db.VarChar(40)
+  title      String    @db.VarChar(200)
+  body       String    @db.VarChar(1000)
+  href       String?   @db.VarChar(300)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt     DateTime? @map("read_at") @db.Timestamptz(6)
+
+  @@index([employeeId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+/// Transactional email queue; a dispatcher sends rows after commit. Never store passwords here.
+model MailOutbox {
+  id        String     @id @db.VarChar(40)
+  to        String     @db.VarChar(254)
+  template  String     @db.VarChar(80)
+  subject   String     @db.VarChar(200)
+  textBody  String     @map("text_body")
+  htmlBody  String?    @map("html_body")
+  status    MailStatus @default(queued)
+  attempts  Int        @default(0)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastError String?    @map("last_error") @db.VarChar(500)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime?  @map("sent_at") @db.Timestamptz(6)
+
+  @@index([status, createdAt])
+  @@map("mail_outbox")
+}
+
+/// Metadata for an uploaded file; bytes live in the storage backend under `storageKey`.
+model StoredFile {
+  id              String    @id @db.VarChar(40)
+  purpose         String    @db.VarChar(60)
+  ownerEmployeeId String?   @map("owner_employee_id") @db.VarChar(32)
+  fileName        String    @map("file_name") @db.VarChar(200)
+  mimeType        String    @map("mime_type") @db.VarChar(100)
+  sizeBytes       Int       @map("size_bytes")
+  sha256          String    @db.VarChar(64)
+  storageKey      String    @unique @map("storage_key") @db.VarChar(300)
+  createdBy       String?   @map("created_by") @db.VarChar(32)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@index([ownerEmployeeId, purpose])
+  @@map("stored_files")
+}
+
+/// Monotonic counters for human-readable references (LV-2600042) and sequential ids (emp_0044).
+model Counter {
+  name  String @id @db.VarChar(60)
+  value Int    @default(0)
+
+  @@map("counters")
+}

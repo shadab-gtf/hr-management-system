@@ -1,51 +1,10 @@
 {
   "name": "gtf-hr",
-  "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.33.2",
-  "engines": {
-    "node": ">=22.20.0 <23",
-    "pnpm": ">=10 <11"
-  },
+  "description": "Runs the two child projects together. Each keeps its own dependencies; install inside gtfhrbackend/ and gtfhrfrontend/.",
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1",
-    "build": "next build",
-    "start": "next start --hostname 127.0.0.1",
-    "lint": "eslint . --max-warnings=0",
-    "typecheck": "next typegen && tsc --noEmit",
-    "test:e2e": "playwright test",
-    "check": "pnpm lint && pnpm typecheck && pnpm build",
-    "format": "prettier --write app components lib types tests *.ts *.mjs *.json",
-    "skeletons:generate": "boneyard-js build http://127.0.0.1:3000 --breakpoints 360,540,768,900,1024,1180,1280,1440 --out ./lib/bones --wait 2000 --no-scan --force",
-    "test:performance": "node --experimental-strip-types scripts/measure-performance.mts"
-  },
-  "dependencies": {
-    "@radix-ui/react-dialog": "1.1.23",
-    "@tanstack/react-query": "5.104.0",
-    "boneyard-js": "1.10.0",
-    "framer-motion": "13.4.4",
-    "iconsax-reactjs": "0.0.8",
-    "next": "16.3.6",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "read-excel-file": "9.3.10",
-    "server-only": "0.0.1",
-    "sonner": "2.0.8",
-    "zod": "4.6.5"
-  },
-  "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
-    "@playwright/test": "1.63.0",
-    "@tailwindcss/postcss": "4.3.3",
-    "@types/node": "22.20.4",
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
-    "eslint": "9.39.5",
-    "eslint-config-next": "16.3.6",
-    "lighthouse": "13.5.0",
-    "postcss": "8.5.28",
-    "prettier": "3.9.9",
-    "tailwindcss": "4.3.3",
-    "typescript": "6.0.3"
+    "dev": "node scripts/run-both.mjs dev",
+    "build": "pnpm --dir gtfhrbackend build && pnpm --dir gtfhrfrontend build",
+    "start": "node scripts/run-both.mjs start"
   }
 }

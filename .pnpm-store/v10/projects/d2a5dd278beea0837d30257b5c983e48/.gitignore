@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.next-*/
+out/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.env*
+!.env.example
+*.log

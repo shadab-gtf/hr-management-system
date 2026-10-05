@@ -46,7 +46,7 @@ TanStack Query, Sonner, Framer Motion and Boneyard are explicitly selected by th
 | `decimal.js` | Exact payroll math with explicit rounding | P3; serialize money as decimal strings |
 | `pino` | Structured redacted server/job logs | P1; no HR payload logging |
 | OpenTelemetry JS packages selected for the pinned runtime | Traces/metrics instrumentation | P1–P4; exclude personal data and control exporters |
-| `nodemailer` | SMTP notifications | P2; actual SMTP endpoint and deliverability are separate |
+| `resend` | Transactional invite, recovery and security emails | P2; verified sender domain and API key required |
 | `playwright` | Worker-only HTML-to-PDF for approved payslip templates | P3; never send browser/PDF runtime to client |
 | SeaweedFS OSS | Private S3-compatible objects | P1 document tasks; verify required OSS API features |
 | ClamAV | Malware scanning/quarantine | P1; up-to-date signatures and failure-closed access |

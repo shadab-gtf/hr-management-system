@@ -1,11 +1,20 @@
 # FE1 — frontend foundation
 
-Updated: 2026-09-28. Status: FE1 implementation complete; local verification passed. Release/acceptance limits remain explicit below.
+Updated: 2026-09-30. Status: FE1 implementation complete; local verification passed. Release/acceptance limits remain explicit below.
+
+## Standalone API integration update — 2026-10-05
+
+- Frontend source no longer imports the sibling backend or Supabase clients. Live services call the standalone API with server-held session credentials; demo handlers use frontend-only fixtures and parsers.
+- Notification updates use a server action with typed API responses and bounded polling. Documents, profile photos and recruitment resumes send actual file bytes; recruitment downloads require authorized access and a clean scanner result.
+- The frontend's unused Supabase, PostgreSQL, Resend and bcrypt dependencies have been removed from its manifest and lockfile.
+- `pnpm check` passed after the live-service and resume changes: ESLint, generated route types, strict TypeScript and the optimized Next.js build (88 generated pages).
+- The API method/path audit maps 340 frontend request variants to 354 registered backend operations with no missing or unresolved paths. See [the generated API inventory](../gtfhrbackend/docs/api/endpoints.md). This is path coverage; backend integration tests separately verify workflow rules, permissions and selected DTOs.
+- Earlier browser, accessibility and Lighthouse results below describe the historical FE1 revision. They are not new performance or accessibility measurements for this integration.
 
 ## Completed
 
 - [x] FE1-01: Next.js App Router scaffold, pinned dependencies, strict TypeScript/no explicit `any`, lint/build/type scripts.
-- [x] FE1-02: Server page → `lib/api` → typed DTO → layout sections → presentational UI; separate client controllers. Server-only guards on API/fixtures.
+- [x] FE1-02: Server page → typed API service → DTO → layout sections → presentational UI; separate client controllers. Server-only guards on services/fixtures.
 - [x] FE1-03: Original GTF logo preserved; semantic light/dark/system tokens, responsive layout, focus styles, skip link and motion preferences.
 - [x] FE1-04: Google Sans variable Latin WOFF2 self-hosted through `next/font/local`; font license/trademark notices retained.
 - [x] FE1-05: Shared button, icon, badge, card/header, form field/input, controlled dialog, sample table, empty/error/skeleton primitives.
@@ -18,6 +27,12 @@ Updated: 2026-09-28. Status: FE1 implementation complete; local verification pas
 - [x] FE1-12: Component playground with validated fictional form, dialog, search/empty state, theme persistence and sample-table status patterns.
 - [x] FE1-13: Local run instructions, frontend phases and dependency/asset evidence.
 - [x] FE1-14: User-requested Codex-style sidebar toggle: 242px/210px desktop navigation collapses to a 64px icon rail over 240ms with Framer Motion; mobile collapses the navigation entirely. Keyboard activation, aria-expanded/controls, labelled icon links, mobile inert state and reduced-motion support are implemented. Collapse is local UI state and resets on a new page mount.
+- [x] FE1-15: Documented modular-monolith boundaries in [STRUCTURE.md](../STRUCTURE.md): frontend feature slices, typed services, backend domain modules, provider clients, and the root Next.js `proxy.ts` convention.
+- [x] FE1-16: Moved UI components/hooks to `frontend/`, typed API adapters to `services/api/`, the request-scoped Supabase client to `clients/supabase/`, and proxy logic to `middleware/`. Kept root `app/` and `proxy.ts` as Next.js discovery conventions, with compatibility aliases/facade so existing imports continue to resolve.
+
+FE1-16 verification: ESLint passed; all 21 `tests/foundation.spec.ts` browser checks passed; Next.js production bundling compiled successfully. The overall typecheck/build is currently blocked by TypeScript errors in the pre-existing untracked `backend/modules` work (missing settlement/payroll modules and unrelated type mismatches); no errors were reported in the moved frontend, service, client, or proxy files.
+
+Later repository layout update (2026-09-30): the Next.js package now lives in `gtfhrfrontend/` and the standalone API package in `gtfhrbackend/`. The completion above is historical; frontend route handlers, server actions, and compatibility calls are still being migrated to the external API.
 
 ## Verification
 
@@ -45,4 +60,4 @@ The first item is an implementation verification task; remaining items are expli
 
 FE2 owns identity screens, role switching, permission UX and operational dashboards. FE3–FE6 own business screens and simulated domain workflows. FE7 owns PWA and full cross-module qualification. Do not count the FE1 fixture table or preview dialog as a completed employee-management feature.
 
-No PostgreSQL, Keycloak, live endpoints, payroll math, file upload/storage, employee persistence, external email, deployment, or production authorization has been implemented.
+At the original FE1 milestone, PostgreSQL, live endpoints, payroll math, file storage, employee persistence and backend authorization were outside that phase. Current standalone-backend implementation and deployment prerequisites are tracked in [API integration](API-INTEGRATION.md).

@@ -1,0 +1,57 @@
+/// Versioned aggregates for workplace collaboration, profile and organization configuration.
+/// Payloads are validated with domain schemas before persistence and on reads.
+model WorkspaceRecord {
+  id        String   @id @db.VarChar(100)
+  kind      String   @db.VarChar(40)
+  ownerId   String?  @map("owner_id") @db.VarChar(32)
+  parentId  String?  @map("parent_id") @db.VarChar(100)
+  state     String   @default("active") @db.VarChar(30)
+  version   Int      @default(1)
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([kind, ownerId, state])
+  @@index([kind, parentId])
+  @@map("workspace_records")
+}
+
+model AccountSecurity {
+  employeeId    String    @id @map("employee_id") @db.VarChar(32)
+  revokedBefore DateTime? @map("revoked_before") @db.Timestamptz(6)
+  totpSecret    String?   @map("totp_secret")
+  factorId      String?   @map("factor_id") @db.VarChar(40)
+  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(6)
+  lastTotpStep  BigInt?   @map("last_totp_step")
+  attempts      Int       @default(0)
+  lockedUntil   DateTime? @map("locked_until") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("account_security")
+}
+
+model AccountLink {
+  id         String    @id @db.VarChar(40)
+  employeeId String    @map("employee_id") @db.VarChar(32)
+  kind       String    @db.VarChar(20)
+  tokenHash  String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt     DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([employeeId, kind])
+  @@map("account_links")
+}
+
+/// Private small files; authenticated endpoints serve bytes, never a public storage path.
+model PrivateFile {
+  id         String   @id @db.VarChar(100)
+  ownerId    String   @map("owner_id") @db.VarChar(32)
+  mime       String   @db.VarChar(100)
+  bytes      Bytes
+  sha256     String   @db.VarChar(64)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([ownerId])
+  @@map("private_files")
+}

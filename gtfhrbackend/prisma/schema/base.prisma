@@ -1,0 +1,11 @@
+// Multi-file schema: base.prisma (this file), core.prisma (shared tables owned by the platform), and one
+// <module>.prisma per feature module. Migrations live in ./migrations next to this datasource.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

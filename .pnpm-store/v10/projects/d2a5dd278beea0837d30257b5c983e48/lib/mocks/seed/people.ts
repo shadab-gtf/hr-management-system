@@ -1,0 +1,132 @@
+import "server-only";
+import type { departments, locations } from "@/lib/mocks/seed/organization";
+import type { EmploymentStatus } from "@/types/employee";
+import type { Persona, Role } from "@/types/session";
+
+type Department = (typeof departments)[number];
+type Location = (typeof locations)[number];
+
+export interface SeedEmployee {
+  id: string;
+  code: string;
+  name: string;
+  designation: string;
+  /** Validated against the HR-configured organization lists. */
+  department: string;
+  location: string;
+  managerId: string | null;
+  joinedOn: string;
+  status: EmploymentStatus;
+  type: "full_time" | "contract" | "intern";
+  /** Synthetic annual CTC in whole rupees; not a GTF salary band. */
+  annualCtc: number;
+}
+
+// [n, name, designation, department, location, manager n, joined, status, type, CTC lakhs]
+type Row = [
+  number,
+  string,
+  string,
+  Department,
+  Location,
+  number | null,
+  string,
+  EmploymentStatus,
+  SeedEmployee["type"],
+  number,
+];
+
+const rows: Row[] = [
+  [1, "Nikhil Anand", "Chief Executive Officer", "Leadership", "Noida HQ", null, "2016-04-01", "active", "full_time", 60],
+  [2, "Sunita Rao", "Chief Operating Officer", "Leadership", "Noida HQ", 1, "2017-07-10", "active", "full_time", 48],
+  [3, "Priya Iyer", "Finance Controller", "Finance", "Noida HQ", 2, "2018-02-19", "active", "full_time", 26],
+  [4, "Vikram Nair", "Payroll Specialist", "Finance", "Noida HQ", 3, "2020-09-01", "active", "full_time", 12],
+  [5, "Meera Kapoor", "HR Business Partner", "People & Culture", "Noida HQ", 2, "2019-06-03", "active", "full_time", 16],
+  [6, "Rohan Verma", "Design Lead", "Design", "Noida HQ", 2, "2018-11-12", "active", "full_time", 28],
+  [7, "Aanya Sharma", "Senior Product Designer", "Design", "Noida HQ", 6, "2021-03-15", "active", "full_time", 18],
+  [8, "Arjun Rao", "Design Intern", "Design", "Remote", 6, "2026-09-07", "onboarding", "intern", 3.6],
+  [9, "Ishita Bose", "Visual Designer", "Design", "Mumbai", 6, "2022-08-22", "active", "full_time", 11],
+  [10, "Kabir Mehta", "Motion Designer", "Design", "Remote", 6, "2023-01-09", "active", "full_time", 10],
+  [11, "Tanvi Kulkarni", "UX Researcher", "Design", "Gurugram", 6, "2022-05-16", "on_leave", "full_time", 13],
+  [12, "Dev Malhotra", "Brand Designer", "Design", "Noida HQ", 6, "2024-02-05", "active", "full_time", 9],
+  [13, "Farhan Qureshi", "Engineering Manager", "Engineering", "Gurugram", 2, "2019-01-21", "active", "full_time", 34],
+  [14, "Sneha Pillai", "Senior Frontend Engineer", "Engineering", "Gurugram", 13, "2020-10-05", "active", "full_time", 24],
+  [15, "Aditya Joshi", "Backend Engineer", "Engineering", "Remote", 13, "2021-12-13", "active", "full_time", 18],
+  [16, "Riya Desai", "QA Engineer", "Engineering", "Gurugram", 13, "2022-04-04", "active", "full_time", 10],
+  [17, "Karan Singh", "DevOps Engineer", "Engineering", "Noida HQ", 13, "2021-07-19", "active", "full_time", 17],
+  [18, "Neha Gupta", "Full-stack Engineer", "Engineering", "Remote", 13, "2022-09-26", "notice", "full_time", 16],
+  [19, "Harsh Vardhan", "Frontend Engineer", "Engineering", "Noida HQ", 13, "2023-06-12", "active", "full_time", 12],
+  [20, "Pooja Menon", "Head of Performance Marketing", "Performance Marketing", "Mumbai", 2, "2019-08-26", "active", "full_time", 30],
+  [21, "Rahul Chawla", "Paid Media Specialist", "Performance Marketing", "Mumbai", 20, "2021-02-01", "active", "full_time", 11],
+  [22, "Simran Kaur", "SEO Strategist", "Performance Marketing", "Noida HQ", 20, "2022-01-17", "active", "full_time", 9.5],
+  [23, "Yash Agarwal", "Marketing Analyst", "Performance Marketing", "Remote", 20, "2023-09-04", "active", "full_time", 8.5],
+  [24, "Ananya Reddy", "Social Media Manager", "Performance Marketing", "Mumbai", 20, "2021-10-11", "active", "full_time", 12],
+  [25, "Siddharth Jain", "Strategy Director", "Strategy & Brand", "Noida HQ", 2, "2018-05-14", "active", "full_time", 32],
+  [26, "Mohit Saxena", "Content Strategist", "Strategy & Brand", "Noida HQ", 25, "2022-03-07", "active", "full_time", 10],
+  [27, "Kavya Nair", "Brand Strategist", "Strategy & Brand", "Mumbai", 25, "2021-06-21", "active", "full_time", 14],
+  [28, "Aisha Khan", "Copywriter", "Strategy & Brand", "Remote", 25, "2023-11-13", "active", "full_time", 8],
+  [29, "Rajat Kapoor", "Video Editor", "Strategy & Brand", "Noida HQ", 25, "2024-07-01", "active", "contract", 7],
+  [30, "Varun Bhatia", "Client Services Director", "Client Services", "Gurugram", 2, "2018-09-03", "active", "full_time", 30],
+  [31, "Nisha Thakur", "Account Manager", "Client Services", "Gurugram", 30, "2020-12-07", "active", "full_time", 14],
+  [32, "Gaurav Mishra", "Account Executive", "Client Services", "Noida HQ", 30, "2023-04-17", "active", "full_time", 7.5],
+  [33, "Divya Shetty", "Project Manager", "Client Services", "Mumbai", 30, "2021-08-09", "active", "full_time", 15],
+  [34, "Aman Tiwari", "Account Executive", "Client Services", "Gurugram", 30, "2026-09-14", "onboarding", "full_time", 6.5],
+  [35, "Shreya Ghosh", "Talent Acquisition Partner", "People & Culture", "Noida HQ", 5, "2022-11-21", "active", "full_time", 9],
+  [36, "Manish Pandey", "HR Operations Executive", "People & Culture", "Noida HQ", 5, "2023-02-13", "active", "full_time", 7],
+  [37, "Zoya Mirza", "Office & Admin Coordinator", "People & Culture", "Noida HQ", 5, "2024-05-06", "active", "full_time", 5.5],
+  [38, "Lakshmi Iyer", "Accounts Executive", "Finance", "Noida HQ", 3, "2022-07-18", "active", "full_time", 7.5],
+  [39, "Payal Sethi", "Web Developer", "Engineering", "Noida HQ", 13, "2024-01-15", "active", "full_time", 9],
+  [40, "Omkar Patil", "Data Engineer", "Engineering", "Mumbai", 13, "2023-03-20", "active", "full_time", 19],
+  [41, "Bhavna Arora", "Media Planner", "Performance Marketing", "Gurugram", 20, "2022-10-03", "active", "full_time", 10],
+  [42, "Tushar Goel", "IT Support Engineer", "Engineering", "Noida HQ", 13, "2021-05-10", "active", "full_time", 6.5],
+  [43, "Ritika Sood", "Account Manager", "Client Services", "Gurugram", 30, "2020-03-02", "exited", "full_time", 13],
+];
+
+const id = (n: number) => `emp_${String(n).padStart(4, "0")}`;
+
+export const seedEmployees: SeedEmployee[] = rows.map(
+  ([n, name, designation, department, location, manager, joinedOn, status, type, ctc]) => ({
+    id: id(n),
+    code: `GTF-${1000 + n}`,
+    name,
+    designation,
+    department,
+    location,
+    managerId: manager === null ? null : id(manager),
+    joinedOn,
+    status,
+    type,
+    annualCtc: Math.round(ctc * 100_000),
+  }),
+);
+
+/** Local demo identities. They are not accounts and never authenticate anyone. */
+export const personas: Record<
+  Persona,
+  { employeeId: string; roles: Role[]; title: string; summary: string }
+> = {
+  employee: {
+    employeeId: id(7),
+    roles: ["employee"],
+    title: "Employee",
+    summary: "Attendance, leave, payslips, requests and own profile.",
+  },
+  hr: {
+    employeeId: id(5),
+    roles: ["employee", "manager", "hr_operator"],
+    title: "HR operations",
+    summary: "Employee records, team approvals, documents and the HR helpdesk queue.",
+  },
+  payroll: {
+    employeeId: id(4),
+    roles: ["employee", "payroll_operator"],
+    title: "Payroll operator",
+    summary: "Prepares and submits payroll runs. Cannot approve own run.",
+  },
+  finance: {
+    employeeId: id(3),
+    roles: ["employee", "manager", "payroll_approver"],
+    title: "Finance approver",
+    summary: "Approves and publishes payroll independently; approves own team requests.",
+  },
+};

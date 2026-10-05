@@ -1,43 +1,49 @@
 # GTF HR · web frontend
 
-Next.js App Router frontend for GTF Technologies' HR platform. It is a complete, role-based product UI, mobile-first and installable as an app (PWA). It runs against a **synthetic mock backend** today and switches to the real HR API with one environment variable. No live employee data, payroll or authentication exists yet.
+Next.js App Router frontend for GTF Technologies' HR platform. It is a role-based product UI, mobile-first and installable as an app (PWA). It reads and writes through the standalone HR API in `gtfhrbackend/` (PostgreSQL); `GTF_API_MODE=mock` switches to synthetic demo fixtures for demos and Playwright runs.
+
+The repository parent contains two child projects: [`gtfhrfrontend/`](./gtfhrfrontend/) (Next.js) and [`gtfhrbackend/`](./gtfhrbackend/) (Node.js + TypeScript + Express + Prisma + PostgreSQL). Run package commands from their respective directories. Every frontend operation is served by the backend API; the backend README documents setup and routes, and [completion/BACKEND-STATUS.md](./completion/BACKEND-STATUS.md) records verification and remaining work.
 
 ## Run locally
 
 Use Node 22.20.0 and pnpm 10.33.2.
 
 ```sh
+cd gtfhrfrontend
 pnpm install --frozen-lockfile
 pnpm dev                 # http://127.0.0.1:3000
 ```
 
-Sign in with a demo profile. Each profile has a different role:
+Sign in with a configured real account. Access and role permissions come from the database. Demo personas and fixture data are opt-in only with `GTF_API_MODE=mock`:
 
-| Profile | Roles | Sees |
+| Example role | Roles | Access |
 | --- | --- | --- |
 | Employee | employee | Self-service: attendance, leave, salary, documents, helpdesk, requests |
 | HR operations | employee, manager, HR operator | + People admin, team approvals, delegates, HR queue, onboarding, announcements, reports |
 | Payroll operator | employee, payroll operator | + Payroll preparation and submission (cannot approve own run), reports |
 | Finance approver | employee, manager, payroll approver | + Independent payroll approval and publication, team approvals, reports |
 
-Mock data is in memory. It resets on restart and is rebuilt daily, relative to today's IST date.
+Mock data is synthetic, in-memory test/demo data. It resets on restart and is rebuilt daily, relative to today's IST date. Do not use mock mode for real HR workflows.
 
 ## Switching to the real API
 
-Pages never know which backend served them. Every read and command goes through `lib/api/<module>/<module>.service.ts` → `lib/api/core/transport.ts`. That transport either calls the mock handler or the real `/api/v1` endpoint, and it validates **both** with the same Zod schema.
+Pages never know which backend served them. Every read and command goes through `services/api/<module>/<module>.service.ts` → `services/api/core/transport.ts`, and every response is validated with the same Zod schema in both modes. Live mode (the default) calls the backend's `/api/v1` endpoints; mock mode is explicit opt-in for demos and Playwright runs.
 
 ```sh
-GTF_API_MODE=live
-GTF_API_BASE_URL=https://hr-api.internal     # serves /api/v1/...
-GTF_SESSION_COOKIE=gtf-session               # forwarded to the API
-GTF_LOGIN_URL=https://sso.internal/login     # sign-in redirect in live mode
+GTF_API_MODE=live                            # or mock (synthetic fixtures; demos/tests only)
+GTF_API_BASE_URL=http://127.0.0.1:4000       # gtfhrbackend API
+GTF_SESSION_COOKIE=gtf-session               # httpOnly cookie carrying the API session
 GTF_API_TIMEOUT_MS=10000
-GTF_MOCK_LATENCY_MS=0                         # mock only: simulate network latency
+GTF_MOCK_LATENCY_MS=0                        # mock only: simulate network latency
 ```
 
-Each service lists its live path next to its mock twin, so the backend contract is readable in one place. Once every endpoint exists, `lib/mocks/` and the `mock:` branches can be deleted without touching pages or components. The live transport already sends `Idempotency-Key` and `If-Match` headers where the contract requires them, and maps `application/problem+json` to field errors.
+The live transport sends `Idempotency-Key` and `If-Match` headers where the contract requires them and maps `application/problem+json` errors to field errors.
 
-## Architecture
+### Account invites and email
+
+HR adds an employee with their real work email; this becomes their login ID. The backend emails a single-use, expiring set-password link; HR never creates, sees or sends the password (pwd.md). Email is sent through `SMTP_URL`/`MAIL_FROM` in `gtfhrbackend/.env`; without `SMTP_URL` messages are only logged (development). Keep these values server-side, never in browser variables or source control, and test with an address you control before inviting staff.
+
+## Frontend architecture (paths relative to `gtfhrfrontend/`)
 
 ```text
 app/                              Server pages (no "use client"), loading/error boundaries, route handlers
@@ -65,8 +71,7 @@ types/<module>.ts                 Zod contracts shared by mock, live transport a
 tests/                            Playwright end-to-end, accessibility and PWA checks
 ```
 
-Read path: `page.tsx → lib/api service → (mock handler | /api/v1) → section → ui`.
-Write path: `feature form → lib/actions → lib/api service → refresh()`.
+Read/write path: `page.tsx or server action → services/api (typed HTTP client) → gtfhrbackend REST API → PostgreSQL`. `GTF_API_MODE=mock` swaps the HTTP client for synthetic in-process fixtures (demos and Playwright only).
 
 Rules enforced by lint: components and hooks cannot import `lib/api`, `lib/mocks` or call `fetch`. Every color is a CSS token (see `app/globals.css`); the web manifest is the one documented exception, because the OS reads it before any CSS loads. Phones use a native-app type scale via `--fs-*` tokens.
 

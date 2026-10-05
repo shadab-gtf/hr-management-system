@@ -1,0 +1,6 @@
+dist/
+node_modules/
+legacy/
+coverage/
+pnpm-lock.yaml
+prisma/migrations/

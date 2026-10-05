@@ -1,0 +1,214 @@
+model PayConfiguration {
+  id Int @id @default(1)
+  version Int @default(1)
+  settings Json
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  @@map("pay_configuration")
+}
+
+model PayProfile {
+  employeeId String @id @db.VarChar(32)
+  entityId String @db.VarChar(40)
+  state String @db.VarChar(8)
+  uan String? @db.VarChar(12)
+  pfMemberId String? @db.VarChar(40)
+  esiIp String? @db.VarChar(10)
+  pan String?
+  pfOptOut Boolean @default(false)
+  vpfPercent Int @default(0)
+  bankName String @default("") @db.VarChar(120)
+  accountNumber String @default("")
+  ifsc String @default("") @db.VarChar(11)
+  bankStatus String @default("pending") @db.VarChar(16)
+  bankChangedBy String? @db.VarChar(32)
+  bankChangedAt DateTime? @db.Timestamptz(6)
+  version Int @default(1)
+  @@index([entityId, state])
+  @@map("pay_profiles")
+}
+
+model PayCompensation {
+  id String @id @db.VarChar(60)
+  employeeId String @db.VarChar(32)
+  effectiveFrom DateTime @db.Date
+  annualPaise BigInt
+  previousPaise BigInt @default(0)
+  reason String @db.VarChar(300)
+  reference String @db.VarChar(60)
+  batchId String? @db.VarChar(60)
+  @@unique([employeeId, effectiveFrom])
+  @@index([employeeId, effectiveFrom(sort: Desc)])
+  @@map("pay_compensation")
+}
+
+model PayTemplate {
+  id String @id @db.VarChar(40)
+  terms Json
+  version Int @default(1)
+  publishedAt DateTime @default(now()) @db.Timestamptz(6)
+  publishedBy String @db.VarChar(32)
+  @@map("pay_templates")
+}
+
+model PayStructureChange {
+  id String @id @db.VarChar(40)
+  reference String @unique @db.VarChar(60)
+  kind String @db.VarChar(16)
+  templateId String @db.VarChar(40)
+  input Json
+  state String @default("pending") @db.VarChar(16)
+  preparedBy String @db.VarChar(32)
+  preparedAt DateTime @default(now()) @db.Timestamptz(6)
+  decidedBy String? @db.VarChar(32)
+  decidedAt DateTime? @db.Timestamptz(6)
+  decisionNote String? @db.VarChar(300)
+  version Int @default(1)
+  @@index([state, preparedAt])
+  @@map("pay_structure_changes")
+}
+
+model PayRun {
+  id String @id @db.VarChar(60)
+  month String @db.VarChar(7)
+  revision Int @default(1)
+  state String @default("draft") @db.VarChar(16)
+  preparedBy String @db.VarChar(32)
+  approvedBy String? @db.VarChar(32)
+  publishedAt DateTime? @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  inputDigest String @default("") @db.VarChar(80)
+  calculationInputs Json @default("{}")
+  results PayResult[]
+  inputs PayInput[]
+  holds PayHold[]
+  @@unique([month])
+  @@index([state, month])
+  @@map("pay_runs")
+}
+
+model PayResult {
+  id String @id @db.VarChar(100)
+  runId String @db.VarChar(60)
+  run PayRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  employeeId String @db.VarChar(32)
+  grossPaise BigInt
+  deductionsPaise BigInt
+  employerPaise BigInt
+  netPaise BigInt
+  snapshot Json
+  @@unique([runId, employeeId])
+  @@index([employeeId, runId])
+  @@map("pay_results")
+}
+
+model PayInput {
+  id String @id @db.VarChar(40)
+  runId String @db.VarChar(60)
+  run PayRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  employeeId String @db.VarChar(32)
+  kind String @db.VarChar(30)
+  amountPaise BigInt @default(0)
+  lopHalves Int @default(0)
+  arrearsFrom String? @db.VarChar(7)
+  arrearsMonths Int @default(0)
+  note String @db.VarChar(300)
+  addedBy String @db.VarChar(32)
+  addedAt DateTime @default(now()) @db.Timestamptz(6)
+  @@index([runId, employeeId])
+  @@map("pay_inputs")
+}
+
+model PayHold {
+  id String @id @db.VarChar(40)
+  runId String @db.VarChar(60)
+  run PayRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  employeeId String @db.VarChar(32)
+  reason String @db.VarChar(300)
+  heldBy String @db.VarChar(32)
+  heldAt DateTime @default(now()) @db.Timestamptz(6)
+  releasedBy String? @db.VarChar(32)
+  releasedAt DateTime? @db.Timestamptz(6)
+  releaseNote String? @db.VarChar(300)
+  @@index([runId, employeeId])
+  @@map("pay_holds")
+}
+
+model PayDeclaration {
+  employeeId String @db.VarChar(32)
+  financialYear String @db.VarChar(7)
+  regime String @default("new") @db.VarChar(3)
+  state String @default("draft") @db.VarChar(16)
+  submittedAt DateTime? @db.Timestamptz(6)
+  items Json @default("{}")
+  monthlyRentPaise BigInt @default(0)
+  rentCity String @default("metro") @db.VarChar(12)
+  version Int @default(1)
+  @@id([employeeId, financialYear])
+  @@map("pay_declarations")
+}
+
+model PayLoan {
+  id String @id @db.VarChar(40)
+  reference String @unique @db.VarChar(60)
+  employeeId String @db.VarChar(32)
+  type String @db.VarChar(20)
+  principalPaise BigInt
+  recoveredPaise BigInt @default(0)
+  tenureMonths Int
+  paidInstallments Int @default(0)
+  startMonth String @db.VarChar(7)
+  state String @default("requested") @db.VarChar(16)
+  reason String @db.VarChar(300)
+  requestedAt DateTime @default(now()) @db.Timestamptz(6)
+  decidedBy String? @db.VarChar(32)
+  decidedAt DateTime? @db.Timestamptz(6)
+  decisionNote String? @db.VarChar(300)
+  version Int @default(1)
+  @@index([employeeId, state])
+  @@map("pay_loans")
+}
+
+model PayImport {
+  id String @id @db.VarChar(40)
+  reference String @unique @db.VarChar(60)
+  fileName String @db.VarChar(200)
+  state String @default("previewed") @db.VarChar(16)
+  uploadedBy String @db.VarChar(32)
+  uploadedAt DateTime @default(now()) @db.Timestamptz(6)
+  submittedAt DateTime? @db.Timestamptz(6)
+  decidedBy String? @db.VarChar(32)
+  decidedAt DateTime? @db.Timestamptz(6)
+  decisionNote String? @db.VarChar(300)
+  preview Json
+  version Int @default(1)
+  @@index([state, uploadedAt])
+  @@map("pay_imports")
+}
+
+model PayChallan {
+  id String @id @db.VarChar(40)
+  reference String @unique @db.VarChar(60)
+  obligationKey String @unique @db.VarChar(150)
+  type String @db.VarChar(8)
+  entityId String @db.VarChar(40)
+  state String? @db.VarChar(8)
+  period String @db.VarChar(7)
+  amountPaise BigInt
+  paidOn DateTime @db.Date
+  challanNo String @db.VarChar(24)
+  bsrCode String? @db.VarChar(7)
+  recordedBy String @db.VarChar(32)
+  recordedAt DateTime @default(now()) @db.Timestamptz(6)
+  @@index([period, entityId])
+  @@map("pay_challans")
+}
+
+model PayForm16 {
+  employeeId String @db.VarChar(32)
+  financialYear String @db.VarChar(7)
+  snapshot Json
+  generatedBy String @db.VarChar(32)
+  generatedAt DateTime @default(now()) @db.Timestamptz(6)
+  @@id([employeeId, financialYear])
+  @@map("pay_form16")
+}

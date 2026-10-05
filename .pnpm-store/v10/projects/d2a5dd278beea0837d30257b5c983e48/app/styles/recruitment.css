@@ -1,0 +1,530 @@
+/* recruitment module styles. Tokens only (app/styles/app.css :root); no hardcoded colors. */
+
+.rec-inline-form {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.rec-mock-note {
+  padding: 0 20px 16px;
+  margin: 0;
+}
+.card-body .rec-mock-note {
+  padding: 12px 0 0;
+}
+.rec-break {
+  overflow-wrap: anywhere;
+}
+.rec-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.rec-toolbar-check {
+  align-self: center;
+  min-height: 44px;
+  align-items: center;
+}
+.rec-fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  padding: 12px 16px 16px;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.rec-fieldset legend {
+  font-weight: 600;
+  font-size: var(--fs-secondary);
+  padding: 0 4px;
+}
+
+/* Pipeline counts ---------------------------------------------------------- */
+
+.rec-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.rec-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--neutral-tint);
+  font-size: var(--fs-caption);
+}
+.rec-count[data-stage="offer"] {
+  background: var(--yellow-tint);
+}
+.rec-count[data-stage="hired"] {
+  background: var(--success-bg);
+}
+.rec-count-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+.rec-meter {
+  display: grid;
+  grid-template-columns: minmax(60px, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+/* Kanban board: stage tabs on phones, columns on desktop ------------------- */
+
+.rec-stage-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.rec-stage-tabs .chip {
+  flex: 0 0 auto;
+  min-height: 40px;
+}
+.rec-board {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.rec-column {
+  display: none;
+  min-width: 0;
+  background: var(--neutral-tint);
+  border-radius: var(--radius-panel);
+  padding: 12px;
+}
+.rec-column[data-active] {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+.rec-column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--fs-secondary);
+  font-weight: 600;
+}
+.rec-column-empty {
+  margin: 0;
+  padding: 8px 0;
+}
+.rec-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.rec-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  min-width: 0;
+}
+.rec-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.rec-card-name {
+  font-weight: 600;
+  font-size: var(--fs-body);
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+a.rec-card-name:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.rec-card-meta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: var(--fs-caption);
+  color: var(--muted);
+}
+.rec-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+@media (min-width: 1024px) {
+  .rec-stage-tabs {
+    display: none;
+  }
+  .rec-board {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 1fr);
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .rec-column,
+  .rec-column[data-active] {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+  }
+}
+
+/* Interviews & scorecards -------------------------------------------------- */
+
+.rec-interview {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  min-width: 0;
+}
+.rec-interview-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.rec-interview-title {
+  margin: 0;
+  font-size: var(--fs-heading);
+  overflow-wrap: anywhere;
+}
+.rec-interview-title a {
+  color: var(--text);
+}
+.rec-interview-meta {
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: var(--fs-secondary);
+}
+.rec-panel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+.rec-hidden-feedback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
+  background: var(--info-bg);
+  color: var(--text);
+}
+.rec-scorecards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.rec-scorecard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-control);
+  background: var(--neutral-tint);
+}
+.rec-scorecard-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rec-ratings {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 16px;
+}
+@media (min-width: 640px) {
+  .rec-ratings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.rec-ratings > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-caption);
+}
+.rec-ratings dt {
+  color: var(--muted);
+}
+.rec-ratings dd {
+  margin: 0;
+}
+.rec-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.rec-dot[data-on] {
+  background: var(--primary);
+}
+.rec-rating {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.rec-rating legend {
+  font-size: var(--fs-secondary);
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 6px;
+}
+.rec-rating-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  gap: 6px;
+}
+.rec-rating-option {
+  position: relative;
+}
+.rec-rating-option input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.rec-rating-option span {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  font-weight: 600;
+}
+.rec-rating-option input:checked + span {
+  border-color: var(--primary);
+  background: var(--tint);
+  color: var(--primary);
+}
+.rec-rating-option input:focus-visible + span {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* Notes -------------------------------------------------------------------- */
+
+.rec-notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.rec-notes li {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.rec-notes p {
+  margin: 0;
+}
+
+/* Offer letter ------------------------------------------------------------- */
+
+.rec-letter {
+  display: grid;
+  gap: 14px;
+  max-width: 760px;
+  padding: 28px 20px;
+  font-size: var(--fs-body);
+  line-height: 1.6;
+}
+@media (min-width: 640px) {
+  .rec-letter {
+    padding: 40px 48px;
+  }
+}
+.rec-letter p {
+  margin: 0;
+}
+.rec-letter-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.rec-letter-org {
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.rec-letter-ref {
+  text-align: right;
+}
+.rec-letter-terms {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-control);
+  background: var(--neutral-tint);
+}
+.rec-letter-terms > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rec-letter-terms dt {
+  color: var(--muted);
+}
+.rec-letter-terms dd {
+  margin: 0;
+  font-weight: 600;
+}
+.rec-letter-sign {
+  padding-top: 24px;
+}
+@media print {
+  .rec-letter {
+    border: 0;
+    max-width: none;
+    padding: 0;
+  }
+  .back-link {
+    display: none !important;
+  }
+}
+
+/* Public careers site ------------------------------------------------------ */
+
+.careers {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--canvas);
+  color: var(--text);
+}
+.careers-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px var(--gutter);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.careers-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: var(--fs-heading);
+}
+.careers-logo {
+  width: 72px;
+  height: auto;
+}
+.careers-main {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 24px var(--gutter) 40px;
+  min-width: 0;
+}
+.careers-foot {
+  padding: 16px var(--gutter);
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+.careers-hero {
+  display: grid;
+  gap: 8px;
+}
+.careers-hero h1 {
+  margin: 0;
+  font-size: var(--fs-large-title);
+  line-height: 1.2;
+}
+.careers-hero p {
+  margin: 0;
+}
+.careers-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.careers-job {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 16px 48px 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+.careers-job:hover,
+.careers-job:focus-visible {
+  border-color: var(--primary);
+}
+.careers-job-title {
+  font-size: var(--fs-heading);
+  font-weight: 600;
+}
+.careers-job-chevron {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+}
+.careers-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: var(--muted);
+  font-size: var(--fs-secondary);
+}
+.careers-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

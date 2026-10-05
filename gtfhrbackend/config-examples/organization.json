@@ -1,0 +1,14 @@
+{
+  "organization": {
+    "name": "Your Company",
+    "legalEntity": "Your Company Private Limited",
+    "payGroup": "Monthly payroll",
+    "timezone": "Asia/Kolkata",
+    "currency": "INR",
+    "emailDomain": "your-company.example"
+  },
+  "departments": [{ "id": "people", "name": "People", "costCenter": "HR" }],
+  "locations": [{ "id": "head-office", "name": "Head Office", "state": null }],
+  "probationDefaults": { "full_time": 6, "contract": 0, "intern": 0 },
+  "initialShift": { "name": "General", "start": "09:00", "end": "18:00", "breakMinutes": 60, "graceMinutes": 0 }
+}

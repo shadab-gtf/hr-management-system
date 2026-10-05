@@ -1,0 +1,10 @@
+DO $time$ BEGIN ALTER TABLE time_workflows ADD CONSTRAINT time_workflow_employee_fk FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; END $time$;
+DO $time$ BEGIN ALTER TABLE time_workflows ADD CONSTRAINT time_workflow_approver_fk FOREIGN KEY (approver_id) REFERENCES employees(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; END $time$;
+DO $time$ BEGIN ALTER TABLE time_attendance ADD CONSTRAINT time_attendance_employee_fk FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; END $time$;
+DO $time$ BEGIN ALTER TABLE time_leave_ledger ADD CONSTRAINT time_ledger_employee_fk FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; END $time$;
+DO $time$ BEGIN ALTER TABLE time_attendance ADD CONSTRAINT time_attendance_minutes CHECK (worked_minutes >= 0 AND (last_out IS NULL OR first_in IS NOT NULL) AND (last_out IS NULL OR last_out >= first_in)); EXCEPTION WHEN duplicate_object THEN NULL; END $time$;
+DO $time$ BEGIN ALTER TABLE time_workflows ADD CONSTRAINT time_workflow_version CHECK (version > 0); EXCEPTION WHEN duplicate_object THEN NULL; END $time$;
+DO $time$ BEGIN ALTER TABLE time_leave_ledger ADD CONSTRAINT time_ledger_half_units CHECK (units * 2 = trunc(units * 2)); EXCEPTION WHEN duplicate_object THEN NULL; END $time$;
+CREATE UNIQUE INDEX IF NOT EXISTS time_open_regularization ON time_workflows(employee_id,start_date) WHERE kind='regularization' AND state='pending';
+CREATE UNIQUE INDEX IF NOT EXISTS time_active_comp_off ON time_workflows(employee_id,start_date) WHERE kind='comp_off' AND state IN ('pending','approved');
+CREATE UNIQUE INDEX IF NOT EXISTS time_timesheet_week ON time_workflows(employee_id,start_date) WHERE kind='timesheet';

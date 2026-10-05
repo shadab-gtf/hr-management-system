@@ -1,0 +1,19 @@
+/// Versioned domain aggregates. JSON payloads are validated with the backend-owned
+/// lifecycle, recruitment and performance contracts at every read and mutation.
+model TalentRecord {
+  id        String   @id @db.VarChar(60)
+  domain    String   @db.VarChar(30)
+  kind      String   @db.VarChar(40)
+  ownerId   String?  @map("owner_id") @db.VarChar(32)
+  parentId  String?  @map("parent_id") @db.VarChar(60)
+  state     String   @default("active") @db.VarChar(40)
+  data      Json
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([domain, kind, ownerId])
+  @@index([domain, kind, parentId])
+  @@index([domain, kind, state])
+  @@map("talent_records")
+}

@@ -1,0 +1,3475 @@
+{
+  "scope": "HTTP method/path coverage. Query, body, response validation and authorization require integration tests. Dynamic identifiers are normalized as :value; health routes outside /api/v1 are excluded.",
+  "registeredCount": 356,
+  "frontendOperationCount": 340,
+  "missing": [],
+  "unresolved": [],
+  "contracts": [
+    {
+      "method": "GET",
+      "path": "/lifecycle/onboarding",
+      "file": "services\\api\\admin\\admin.service.ts",
+      "line": 14
+    },
+    {
+      "method": "PATCH",
+      "path": "/lifecycle/onboarding/:value/tasks/:value",
+      "file": "services\\api\\admin\\admin.service.ts",
+      "line": 20
+    },
+    {
+      "method": "GET",
+      "path": "/lifecycle/offboarding",
+      "file": "services\\api\\admin\\admin.service.ts",
+      "line": 26
+    },
+    {
+      "method": "PATCH",
+      "path": "/lifecycle/offboarding/:value/tasks/:value",
+      "file": "services\\api\\admin\\admin.service.ts",
+      "line": 32
+    },
+    {
+      "method": "POST",
+      "path": "/lifecycle/offboarding/:value/complete",
+      "file": "services\\api\\admin\\admin.service.ts",
+      "line": 40
+    },
+    {
+      "method": "GET",
+      "path": "/service-requests",
+      "file": "services\\api\\admin\\admin.service.ts",
+      "line": 46
+    },
+    {
+      "method": "POST",
+      "path": "/service-requests/:value/:value/decisions",
+      "file": "services\\api\\admin\\admin.service.ts",
+      "line": 52
+    },
+    {
+      "method": "GET",
+      "path": "/reports/workforce",
+      "file": "services\\api\\admin\\admin.service.ts",
+      "line": 58
+    },
+    {
+      "method": "GET",
+      "path": "/announcements",
+      "file": "services\\api\\announcements\\announcements.service.ts",
+      "line": 12
+    },
+    {
+      "method": "POST",
+      "path": "/announcements",
+      "file": "services\\api\\announcements\\announcements.service.ts",
+      "line": 18
+    },
+    {
+      "method": "PATCH",
+      "path": "/announcements/:value",
+      "file": "services\\api\\announcements\\announcements.service.ts",
+      "line": 27
+    },
+    {
+      "method": "POST",
+      "path": "/announcements/:value/archive",
+      "file": "services\\api\\announcements\\announcements.service.ts",
+      "line": 34
+    },
+    {
+      "method": "GET",
+      "path": "/approvals",
+      "file": "services\\api\\approvals\\approvals.service.ts",
+      "line": 11
+    },
+    {
+      "method": "GET",
+      "path": "/me/work-queue",
+      "file": "services\\api\\approvals\\approvals.service.ts",
+      "line": 17
+    },
+    {
+      "method": "POST",
+      "path": "/approvals/:value/decisions",
+      "file": "services\\api\\approvals\\approvals.service.ts",
+      "line": 23
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/today",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/days",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 18
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/team/today",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 23
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/events",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 29
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/regularizations",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 46
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/roster/me",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 53
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/roster/planner",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 58
+    },
+    {
+      "method": "PATCH",
+      "path": "/attendance/roster/:value/:value",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 64
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/roster/:value/:value/pattern",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 71
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/weekly-offs/:value",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 78
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/roster/swaps",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 85
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/roster/swaps/:value/decision",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 92
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/roster/swaps/:value/cancel",
+      "file": "services\\api\\attendance\\attendance.service.ts",
+      "line": 99
+    },
+    {
+      "method": "GET",
+      "path": "/config/holidays",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 15
+    },
+    {
+      "method": "POST",
+      "path": "/config/holidays",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 19
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/holidays/:value",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 19
+    },
+    {
+      "method": "POST",
+      "path": "/config/holidays/:value/delete",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 24
+    },
+    {
+      "method": "GET",
+      "path": "/events",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 27
+    },
+    {
+      "method": "POST",
+      "path": "/events",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 31
+    },
+    {
+      "method": "PATCH",
+      "path": "/events/:value",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 31
+    },
+    {
+      "method": "POST",
+      "path": "/events/:value/delete",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 36
+    },
+    {
+      "method": "GET",
+      "path": "/config/celebrations",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 38
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/celebrations",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 43
+    },
+    {
+      "method": "GET",
+      "path": "/config/leave-types",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 46
+    },
+    {
+      "method": "POST",
+      "path": "/config/leave-types",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 50
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/leave-types/:value",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 50
+    },
+    {
+      "method": "GET",
+      "path": "/config/leave-types/version",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 54
+    },
+    {
+      "method": "GET",
+      "path": "/config/attendance",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 56
+    },
+    {
+      "method": "POST",
+      "path": "/config/shifts",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 60
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/shifts/:value",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 60
+    },
+    {
+      "method": "POST",
+      "path": "/config/shifts/:value/delete",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 65
+    },
+    {
+      "method": "POST",
+      "path": "/config/shifts/:value/default",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 68
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/departments/:value/shift",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 71
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/attendance/overtime",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 74
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/attendance/late-early",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 77
+    },
+    {
+      "method": "GET",
+      "path": "/config/sites/address-search",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 82
+    },
+    {
+      "method": "POST",
+      "path": "/config/sites",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 89
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/sites/:value",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 89
+    },
+    {
+      "method": "POST",
+      "path": "/config/sites/:value/delete",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 94
+    },
+    {
+      "method": "GET",
+      "path": "/config/organization",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 97
+    },
+    {
+      "method": "POST",
+      "path": "/config/departments",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 101
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/departments/:value",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 101
+    },
+    {
+      "method": "POST",
+      "path": "/config/departments/:value/delete",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 106
+    },
+    {
+      "method": "POST",
+      "path": "/config/locations",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 109
+    },
+    {
+      "method": "POST",
+      "path": "/config/locations/:value/delete",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 112
+    },
+    {
+      "method": "GET",
+      "path": "/config/checklists",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 115
+    },
+    {
+      "method": "POST",
+      "path": "/config/checklists/:value",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 119
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/checklists/:value/:value",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 119
+    },
+    {
+      "method": "POST",
+      "path": "/config/checklists/:value/:value/delete",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 124
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/probation",
+      "file": "services\\api\\config\\config.service.ts",
+      "line": 132
+    },
+    {
+      "method": "GET",
+      "path": "/me/home",
+      "file": "services\\api\\dashboard\\dashboard.service.ts",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/me/home/who-is-out",
+      "file": "services\\api\\dashboard\\dashboard.service.ts",
+      "line": 20
+    },
+    {
+      "method": "GET",
+      "path": "/documents",
+      "file": "services\\api\\documents\\documents.service.ts",
+      "line": 11
+    },
+    {
+      "method": "POST",
+      "path": "/documents/uploads",
+      "file": "services\\api\\documents\\documents.service.ts",
+      "line": 23
+    },
+    {
+      "method": "PUT",
+      "path": "/documents/uploads/:value/content",
+      "file": "services\\api\\documents\\documents.service.ts",
+      "line": 30
+    },
+    {
+      "method": "GET",
+      "path": "/employees",
+      "file": "services\\api\\employees\\employees.service.ts",
+      "line": 28
+    },
+    {
+      "method": "GET",
+      "path": "/employees/facets",
+      "file": "services\\api\\employees\\employees.service.ts",
+      "line": 36
+    },
+    {
+      "method": "GET",
+      "path": "/employees/:value",
+      "file": "services\\api\\employees\\employees.service.ts",
+      "line": 44
+    },
+    {
+      "method": "POST",
+      "path": "/me/profile/change-requests",
+      "file": "services\\api\\employees\\employees.service.ts",
+      "line": 55
+    },
+    {
+      "method": "GET",
+      "path": "/employees/form-options",
+      "file": "services\\api\\employees\\employees.service.ts",
+      "line": 63
+    },
+    {
+      "method": "POST",
+      "path": "/employees",
+      "file": "services\\api\\employees\\employees.service.ts",
+      "line": 74
+    },
+    {
+      "method": "POST",
+      "path": "/employees/:value/assignments",
+      "file": "services\\api\\employees\\employees.service.ts",
+      "line": 87
+    },
+    {
+      "method": "POST",
+      "path": "/employees/:value/exit",
+      "file": "services\\api\\employees\\employees.service.ts",
+      "line": 96
+    },
+    {
+      "method": "GET",
+      "path": "/engage/feed",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 10
+    },
+    {
+      "method": "POST",
+      "path": "/engage/posts",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 19
+    },
+    {
+      "method": "POST",
+      "path": "/engage/posts/:value/reactions",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 26
+    },
+    {
+      "method": "POST",
+      "path": "/engage/posts/:value/comments",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 33
+    },
+    {
+      "method": "POST",
+      "path": "/engage/posts/:value/archive",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 40
+    },
+    {
+      "method": "GET",
+      "path": "/engage/polls",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 47
+    },
+    {
+      "method": "POST",
+      "path": "/engage/polls",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 53
+    },
+    {
+      "method": "POST",
+      "path": "/engage/polls/:value/ballot",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 60
+    },
+    {
+      "method": "POST",
+      "path": "/engage/polls/:value/close",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 67
+    },
+    {
+      "method": "GET",
+      "path": "/engage/praise",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 74
+    },
+    {
+      "method": "POST",
+      "path": "/engage/praise",
+      "file": "services\\api\\engage\\engage.service.ts",
+      "line": 80
+    },
+    {
+      "method": "GET",
+      "path": "/me/surveys",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 27
+    },
+    {
+      "method": "GET",
+      "path": "/engage/surveys",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 31
+    },
+    {
+      "method": "GET",
+      "path": "/engage/surveys/:value",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 35
+    },
+    {
+      "method": "GET",
+      "path": "/engage/surveys/:value/results",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 39
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:value/responses",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 45
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 55
+    },
+    {
+      "method": "PATCH",
+      "path": "/engage/surveys/:value",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 54
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:value/questions",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 63
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:value/questions/:value/archive",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 71
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:value/questions/:value/move",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 79
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:value/publish",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 85
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:value/close",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 89
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:value/archive",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 93
+    },
+    {
+      "method": "GET",
+      "path": "/engage/surveys/:value/results/export",
+      "file": "services\\api\\engage\\surveys.service.ts",
+      "line": 97
+    },
+    {
+      "method": "GET",
+      "path": "/expenses",
+      "file": "services\\api\\expenses\\expenses.service.ts",
+      "line": 10
+    },
+    {
+      "method": "POST",
+      "path": "/expenses",
+      "file": "services\\api\\expenses\\expenses.service.ts",
+      "line": 16
+    },
+    {
+      "method": "GET",
+      "path": "/tickets/categories",
+      "file": "services\\api\\helpdesk\\helpdesk.service.ts",
+      "line": 10
+    },
+    {
+      "method": "GET",
+      "path": "/tickets",
+      "file": "services\\api\\helpdesk\\helpdesk.service.ts",
+      "line": 15
+    },
+    {
+      "method": "GET",
+      "path": "/tickets/:value",
+      "file": "services\\api\\helpdesk\\helpdesk.service.ts",
+      "line": 20
+    },
+    {
+      "method": "POST",
+      "path": "/tickets",
+      "file": "services\\api\\helpdesk\\helpdesk.service.ts",
+      "line": 26
+    },
+    {
+      "method": "POST",
+      "path": "/tickets/:value/messages",
+      "file": "services\\api\\helpdesk\\helpdesk.service.ts",
+      "line": 33
+    },
+    {
+      "method": "POST",
+      "path": "/tickets/:value/close",
+      "file": "services\\api\\helpdesk\\helpdesk.service.ts",
+      "line": 40
+    },
+    {
+      "method": "GET",
+      "path": "/identity/access",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 86
+    },
+    {
+      "method": "GET",
+      "path": "/audit",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 94
+    },
+    {
+      "method": "GET",
+      "path": "/me/security",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 105
+    },
+    {
+      "method": "GET",
+      "path": "/me/security/mfa-gate",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 125
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:value/invite",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 135
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:value/invite-link",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 145
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:value/roles/:value",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 155
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:value/enable",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 165
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:value/disable",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 165
+    },
+    {
+      "method": "POST",
+      "path": "/auth/recovery",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 175
+    },
+    {
+      "method": "POST",
+      "path": "/auth/set-password",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 181
+    },
+    {
+      "method": "GET",
+      "path": "/auth/link",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 187
+    },
+    {
+      "method": "POST",
+      "path": "/me/security/mfa/enroll",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 192
+    },
+    {
+      "method": "POST",
+      "path": "/me/security/mfa/:value/remove",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 205
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout-all",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 212
+    },
+    {
+      "method": "POST",
+      "path": "/me/security/mfa/verify",
+      "file": "services\\api\\identity\\identity.service.ts",
+      "line": 224
+    },
+    {
+      "method": "POST",
+      "path": "/compensation/imports/upload",
+      "file": "services\\api\\imports\\compensation.service.ts",
+      "line": 17
+    },
+    {
+      "method": "GET",
+      "path": "/compensation/imports",
+      "file": "services\\api\\imports\\compensation.service.ts",
+      "line": 35
+    },
+    {
+      "method": "GET",
+      "path": "/compensation/imports/:value",
+      "file": "services\\api\\imports\\compensation.service.ts",
+      "line": 39
+    },
+    {
+      "method": "POST",
+      "path": "/compensation/imports/:value/decisions",
+      "file": "services\\api\\imports\\compensation.service.ts",
+      "line": 45
+    },
+    {
+      "method": "POST",
+      "path": "/compensation/imports/:value/discard",
+      "file": "services\\api\\imports\\compensation.service.ts",
+      "line": 51
+    },
+    {
+      "method": "POST",
+      "path": "/imports/attendance/upload",
+      "file": "services\\api\\imports\\imports.service.ts",
+      "line": 27
+    },
+    {
+      "method": "GET",
+      "path": "/imports/attendance",
+      "file": "services\\api\\imports\\imports.service.ts",
+      "line": 64
+    },
+    {
+      "method": "GET",
+      "path": "/imports/attendance/:value",
+      "file": "services\\api\\imports\\imports.service.ts",
+      "line": 71
+    },
+    {
+      "method": "POST",
+      "path": "/imports/attendance/:value/commit",
+      "file": "services\\api\\imports\\imports.service.ts",
+      "line": 81
+    },
+    {
+      "method": "POST",
+      "path": "/imports/attendance/:value/discard",
+      "file": "services\\api\\imports\\imports.service.ts",
+      "line": 93
+    },
+    {
+      "method": "GET",
+      "path": "/leave/overview",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 13
+    },
+    {
+      "method": "POST",
+      "path": "/leave/requests",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 21
+    },
+    {
+      "method": "POST",
+      "path": "/leave/requests/:value/cancel",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 40
+    },
+    {
+      "method": "GET",
+      "path": "/leave/calendar",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 51
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/holidays",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 57
+    },
+    {
+      "method": "GET",
+      "path": "/leave/ledger",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 64
+    },
+    {
+      "method": "GET",
+      "path": "/leave/ledger/:value",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 64
+    },
+    {
+      "method": "GET",
+      "path": "/leave/admin/people",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 67
+    },
+    {
+      "method": "POST",
+      "path": "/leave/admin/adjustments",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 71
+    },
+    {
+      "method": "GET",
+      "path": "/leave/comp-off",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 76
+    },
+    {
+      "method": "POST",
+      "path": "/leave/comp-off/claims",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 80
+    },
+    {
+      "method": "POST",
+      "path": "/leave/comp-off/claims/:value/decision",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 87
+    },
+    {
+      "method": "POST",
+      "path": "/leave/comp-off/claims/:value/cancel",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 94
+    },
+    {
+      "method": "POST",
+      "path": "/leave/encashments",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 101
+    },
+    {
+      "method": "POST",
+      "path": "/leave/encashments/:value/decision",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 108
+    },
+    {
+      "method": "POST",
+      "path": "/leave/encashments/:value/cancel",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 115
+    },
+    {
+      "method": "GET",
+      "path": "/leave/admin/year-end",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 120
+    },
+    {
+      "method": "POST",
+      "path": "/leave/admin/year-end/:value/commit",
+      "file": "services\\api\\leave\\leave.service.ts",
+      "line": 124
+    },
+    {
+      "method": "GET",
+      "path": "/me/resignation",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 78
+    },
+    {
+      "method": "POST",
+      "path": "/me/resignation",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 84
+    },
+    {
+      "method": "POST",
+      "path": "/resignations/:value/withdraw",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 92
+    },
+    {
+      "method": "POST",
+      "path": "/resignations/:value/decisions",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 100
+    },
+    {
+      "method": "GET",
+      "path": "/lifecycle/offboarding/board",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 108
+    },
+    {
+      "method": "PATCH",
+      "path": "/lifecycle/offboarding/:value/clearances/:value",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 114
+    },
+    {
+      "method": "POST",
+      "path": "/lifecycle/offboarding/:value/exit-interview",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 122
+    },
+    {
+      "method": "GET",
+      "path": "/settlements",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 130
+    },
+    {
+      "method": "GET",
+      "path": "/settlements/:value",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 134
+    },
+    {
+      "method": "POST",
+      "path": "/settlements",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 140
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:value/recalculate",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 148
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:value/lines",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 156
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:value/lines/:value/remove",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 164
+    },
+    {
+      "method": "PATCH",
+      "path": "/settlements/:value/notice-waiver",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 172
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:value/submit",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 180
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:value/decisions",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 188
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:value/payment",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 196
+    },
+    {
+      "method": "GET",
+      "path": "/assets",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 204
+    },
+    {
+      "method": "GET",
+      "path": "/me/assets",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 207
+    },
+    {
+      "method": "POST",
+      "path": "/assets",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 213
+    },
+    {
+      "method": "PATCH",
+      "path": "/assets/:value",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 213
+    },
+    {
+      "method": "POST",
+      "path": "/assets/:value/assignments",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 220
+    },
+    {
+      "method": "POST",
+      "path": "/assets/:value/return",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 227
+    },
+    {
+      "method": "PATCH",
+      "path": "/assets/:value/status",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 234
+    },
+    {
+      "method": "POST",
+      "path": "/me/assets/:value/acknowledge",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 241
+    },
+    {
+      "method": "POST",
+      "path": "/me/asset-requests",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 248
+    },
+    {
+      "method": "POST",
+      "path": "/asset-requests/:value/decisions",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 255
+    },
+    {
+      "method": "GET",
+      "path": "/letter-templates/studio",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 265
+    },
+    {
+      "method": "GET",
+      "path": "/letters/:value",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 271
+    },
+    {
+      "method": "POST",
+      "path": "/letter-templates",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 277
+    },
+    {
+      "method": "PATCH",
+      "path": "/letter-templates/:value",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 277
+    },
+    {
+      "method": "POST",
+      "path": "/letters",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 285
+    },
+    {
+      "method": "GET",
+      "path": "/policies",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 293
+    },
+    {
+      "method": "GET",
+      "path": "/me/policies",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 296
+    },
+    {
+      "method": "POST",
+      "path": "/policies",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 302
+    },
+    {
+      "method": "POST",
+      "path": "/policies/:value/reminders",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 309
+    },
+    {
+      "method": "POST",
+      "path": "/me/policies/:value/acknowledgements",
+      "file": "services\\api\\lifecycle\\lifecycle.service.ts",
+      "line": 316
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/location-check",
+      "file": "services\\api\\location\\location.service.ts",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/me/notifications",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 14
+    },
+    {
+      "method": "POST",
+      "path": "/me/notifications/read-all",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 20
+    },
+    {
+      "method": "GET",
+      "path": "/me/notification-preferences",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 24
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/notification-preferences",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 38
+    },
+    {
+      "method": "GET",
+      "path": "/me/notification-preferences/channels",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 43
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/notification-preferences/channels",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 47
+    },
+    {
+      "method": "POST",
+      "path": "/me/phone/verification",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 54
+    },
+    {
+      "method": "POST",
+      "path": "/me/phone/verification/confirm",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 61
+    },
+    {
+      "method": "POST",
+      "path": "/me/phone/delete",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 66
+    },
+    {
+      "method": "POST",
+      "path": "/me/notifications/:value/read",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 72
+    },
+    {
+      "method": "GET",
+      "path": "/me/notifications/unread-count",
+      "file": "services\\api\\notifications\\notifications.service.ts",
+      "line": 86
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/overview",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 29
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/runs/:value",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 37
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:value/:value",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 57
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/runs/:value/register/export",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 71
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:value/inputs",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 79
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:value/inputs/:value/remove",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 87
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:value/holds",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 95
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:value/holds/:value/release",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 103
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/runs/:value/bank-advice/export",
+      "file": "services\\api\\payroll\\payroll.service.ts",
+      "line": 111
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/statutory",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 32
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/statutory/setup",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 38
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/statutory/employees",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 42
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/statutory/challans",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 48
+    },
+    {
+      "method": "PATCH",
+      "path": "/payroll/statutory/settings",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 56
+    },
+    {
+      "method": "PATCH",
+      "path": "/payroll/statutory/pt/:value",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 64
+    },
+    {
+      "method": "PATCH",
+      "path": "/payroll/statutory/employees/:value",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 72
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/statutory/employees/:value/bank-verification",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 80
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/statutory/files/:value",
+      "file": "services\\api\\payroll\\statutory.service.ts",
+      "line": 88
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/structures",
+      "file": "services\\api\\payroll\\structures.service.ts",
+      "line": 15
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/structures/:value/changes",
+      "file": "services\\api\\payroll\\structures.service.ts",
+      "line": 23
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/structures/assignments/changes",
+      "file": "services\\api\\payroll\\structures.service.ts",
+      "line": 31
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/structures/changes/:value/:value",
+      "file": "services\\api\\payroll\\structures.service.ts",
+      "line": 39
+    },
+    {
+      "method": "GET",
+      "path": "/me/payslips",
+      "file": "services\\api\\payslips\\payslips.service.ts",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/me/payslips/:value",
+      "file": "services\\api\\payslips\\payslips.service.ts",
+      "line": 21
+    },
+    {
+      "method": "GET",
+      "path": "/org/chart",
+      "file": "services\\api\\people\\people.service.ts",
+      "line": 8
+    },
+    {
+      "method": "GET",
+      "path": "/directory/:value",
+      "file": "services\\api\\people\\people.service.ts",
+      "line": 11
+    },
+    {
+      "method": "GET",
+      "path": "/me/starred",
+      "file": "services\\api\\people\\people.service.ts",
+      "line": 14
+    },
+    {
+      "method": "POST",
+      "path": "/me/starred/:value/toggle",
+      "file": "services\\api\\people\\people.service.ts",
+      "line": 18
+    },
+    {
+      "method": "GET",
+      "path": "/performance/me",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 12
+    },
+    {
+      "method": "GET",
+      "path": "/performance/team",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 17
+    },
+    {
+      "method": "GET",
+      "path": "/performance/cycles/overview",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 22
+    },
+    {
+      "method": "GET",
+      "path": "/performance/feedback",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 27
+    },
+    {
+      "method": "POST",
+      "path": "/performance/goals",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 34
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/goals/:value",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 34
+    },
+    {
+      "method": "POST",
+      "path": "/performance/goals/:value/delete",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 39
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles/:value/goal-sheet/submit",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 42
+    },
+    {
+      "method": "POST",
+      "path": "/performance/goals/:value/check-ins",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 45
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/reviews/:value/self",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 48
+    },
+    {
+      "method": "POST",
+      "path": "/performance/reviews/:value/acknowledge",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 51
+    },
+    {
+      "method": "POST",
+      "path": "/performance/goal-sheets/:value/decision",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 54
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/reviews/:value/manager",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 57
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 62
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/cycles/:value",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 62
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles/:value/advance",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 67
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles/:value/calibration/reopen",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 70
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles/:value/calibration/lock",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 70
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/reviews/:value/final-rating",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 73
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/reviews/:value/reviewer",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 76
+    },
+    {
+      "method": "POST",
+      "path": "/performance/competencies",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 81
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/competencies/:value",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 81
+    },
+    {
+      "method": "POST",
+      "path": "/performance/feedback",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 86
+    },
+    {
+      "method": "POST",
+      "path": "/performance/feedback-requests",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 89
+    },
+    {
+      "method": "POST",
+      "path": "/performance/feedback-requests/:value/decline",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 92
+    },
+    {
+      "method": "POST",
+      "path": "/performance/one-on-ones",
+      "file": "services\\api\\performance\\performance.service.ts",
+      "line": 95
+    },
+    {
+      "method": "GET",
+      "path": "/employees/:value/photo",
+      "file": "services\\api\\photos\\photos.service.ts",
+      "line": 23
+    },
+    {
+      "method": "DELETE",
+      "path": "/me/photo",
+      "file": "services\\api\\photos\\photos.service.ts",
+      "line": 39
+    },
+    {
+      "method": "PUT",
+      "path": "/me/photo",
+      "file": "services\\api\\photos\\photos.service.ts",
+      "line": 39
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/stats",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 48
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/jobs",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 56
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/jobs/:value",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 64
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/requisitions",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 72
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/candidates",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 88
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/candidates/:value",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 105
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/candidates/:value/offer",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 115
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/me/interviews",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 125
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/options",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 133
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/me/referrals",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 141
+    },
+    {
+      "method": "GET",
+      "path": "/public/careers/jobs",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 151
+    },
+    {
+      "method": "GET",
+      "path": "/public/careers/jobs/:value",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 159
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/candidates/:value/resume",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 169
+    },
+    {
+      "method": "POST",
+      "path": "/public/careers/jobs/:value/applications",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 191
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/jobs/:value/referrals",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 209
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/requisitions",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 231
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/requisitions/:value/decision",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 249
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/jobs",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 269
+    },
+    {
+      "method": "PATCH",
+      "path": "/recruitment/jobs/:value",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 263
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/jobs/:value/state",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 282
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 299
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:value/stage",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 318
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:value/notes",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 331
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:value/erase",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 343
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:value/interviews",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 357
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/interviews/:value/scorecards",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 374
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:value/offers",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 388
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/offers/:value/approval",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 402
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/offers/:value/response",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 415
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/offers/:value/convert",
+      "file": "services\\api\\recruitment\\recruitment.service.ts",
+      "line": 431
+    },
+    {
+      "method": "GET",
+      "path": "/reports/library",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 47
+    },
+    {
+      "method": "GET",
+      "path": "/reports/analytics/workforce",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 51
+    },
+    {
+      "method": "GET",
+      "path": "/reports/exports",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 55
+    },
+    {
+      "method": "GET",
+      "path": "/reports/builder",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 59
+    },
+    {
+      "method": "GET",
+      "path": "/reports/saved",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 63
+    },
+    {
+      "method": "GET",
+      "path": "/reports/saved/:value",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 67
+    },
+    {
+      "method": "GET",
+      "path": "/reports/deliveries",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 71
+    },
+    {
+      "method": "GET",
+      "path": "/reports/deliveries/:value/download",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 78
+    },
+    {
+      "method": "GET",
+      "path": "/reports/preview",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 92
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 102
+    },
+    {
+      "method": "PATCH",
+      "path": "/reports/saved/:value",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 101
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved/:value/delete",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 108
+    },
+    {
+      "method": "PATCH",
+      "path": "/reports/saved/:value/schedule",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 114
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved/:value/schedule/delete",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 120
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved/:value/schedule/run",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 126
+    },
+    {
+      "method": "POST",
+      "path": "/reports/standard/:value/export",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 136
+    },
+    {
+      "method": "POST",
+      "path": "/reports/custom/export",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 142
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved/:value/export",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 148
+    },
+    {
+      "method": "POST",
+      "path": "/reports/exports",
+      "file": "services\\api\\reports\\reports.service.ts",
+      "line": 157
+    },
+    {
+      "method": "GET",
+      "path": "/me/requests",
+      "file": "services\\api\\requests\\requests.service.ts",
+      "line": 9
+    },
+    {
+      "method": "GET",
+      "path": "/me/letters",
+      "file": "services\\api\\requests\\requests.service.ts",
+      "line": 10
+    },
+    {
+      "method": "POST",
+      "path": "/me/letters",
+      "file": "services\\api\\requests\\requests.service.ts",
+      "line": 18
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/permissions",
+      "file": "services\\api\\requests\\requests.service.ts",
+      "line": 30
+    },
+    {
+      "method": "GET",
+      "path": "/me/delegations",
+      "file": "services\\api\\requests\\requests.service.ts",
+      "line": 36
+    },
+    {
+      "method": "POST",
+      "path": "/me/delegations",
+      "file": "services\\api\\requests\\requests.service.ts",
+      "line": 48
+    },
+    {
+      "method": "POST",
+      "path": "/me/delegations/:value/revoke",
+      "file": "services\\api\\requests\\requests.service.ts",
+      "line": 55
+    },
+    {
+      "method": "GET",
+      "path": "/me/tax/form-16",
+      "file": "services\\api\\salary\\form16.service.ts",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/form-16/:value",
+      "file": "services\\api\\salary\\form16.service.ts",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/form-16",
+      "file": "services\\api\\salary\\form16.service.ts",
+      "line": 19
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/form-16/:value/generate",
+      "file": "services\\api\\salary\\form16.service.ts",
+      "line": 25
+    },
+    {
+      "method": "GET",
+      "path": "/me/salary/ytd",
+      "file": "services\\api\\salary\\salary.service.ts",
+      "line": 26
+    },
+    {
+      "method": "GET",
+      "path": "/me/tax/declaration",
+      "file": "services\\api\\salary\\salary.service.ts",
+      "line": 30
+    },
+    {
+      "method": "GET",
+      "path": "/me/tax/statement",
+      "file": "services\\api\\salary\\salary.service.ts",
+      "line": 34
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/tax/declaration",
+      "file": "services\\api\\salary\\salary.service.ts",
+      "line": 40
+    },
+    {
+      "method": "GET",
+      "path": "/me/loans",
+      "file": "services\\api\\salary\\salary.service.ts",
+      "line": 46
+    },
+    {
+      "method": "POST",
+      "path": "/me/loans",
+      "file": "services\\api\\salary\\salary.service.ts",
+      "line": 52
+    },
+    {
+      "method": "GET",
+      "path": "/me/compensation",
+      "file": "services\\api\\salary\\salary.service.ts",
+      "line": 58
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "file": "services\\api\\session\\credentials.ts",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/me",
+      "file": "services\\api\\session\\session.service.ts",
+      "line": 33
+    },
+    {
+      "method": "GET",
+      "path": "/timesheets/weeks/me",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 34
+    },
+    {
+      "method": "GET",
+      "path": "/timesheets/team",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 42
+    },
+    {
+      "method": "GET",
+      "path": "/projects",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 50
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/weeks/me/:value",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 69
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/weeks/me/:value/copy-previous",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 100
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/weeks/:value/decision",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 121
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/reminders",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 138
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 171
+    },
+    {
+      "method": "PATCH",
+      "path": "/projects/:value",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 164
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/exports/approved",
+      "file": "services\\api\\timesheets\\timesheets.service.ts",
+      "line": 181
+    }
+  ],
+  "registered": [
+    {
+      "method": "POST",
+      "path": "/auth/login"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me"
+    },
+    {
+      "method": "GET",
+      "path": "/employees"
+    },
+    {
+      "method": "GET",
+      "path": "/employees/facets"
+    },
+    {
+      "method": "GET",
+      "path": "/employees/form-options"
+    },
+    {
+      "method": "POST",
+      "path": "/employees"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/recovery"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/set-password"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/link"
+    },
+    {
+      "method": "GET",
+      "path": "/identity/access"
+    },
+    {
+      "method": "GET",
+      "path": "/me/security"
+    },
+    {
+      "method": "GET",
+      "path": "/me/security/mfa-gate"
+    },
+    {
+      "method": "GET",
+      "path": "/audit"
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:id/invite"
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:id/invite-link"
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:id/roles/grant"
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:id/roles/revoke"
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:id/disable"
+    },
+    {
+      "method": "POST",
+      "path": "/identity/accounts/:id/enable"
+    },
+    {
+      "method": "POST",
+      "path": "/me/security/mfa/enroll"
+    },
+    {
+      "method": "POST",
+      "path": "/me/security/mfa/verify"
+    },
+    {
+      "method": "POST",
+      "path": "/me/security/mfa/:id/remove"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout-all"
+    },
+    {
+      "method": "GET",
+      "path": "/employees/:id/photo"
+    },
+    {
+      "method": "GET",
+      "path": "/documents/:id/content"
+    },
+    {
+      "method": "GET",
+      "path": "/me"
+    },
+    {
+      "method": "GET",
+      "path": "/me/home"
+    },
+    {
+      "method": "POST",
+      "path": "/me/profile/change-requests"
+    },
+    {
+      "method": "GET",
+      "path": "/service-requests"
+    },
+    {
+      "method": "POST",
+      "path": "/service-requests/:kind/:id/decisions"
+    },
+    {
+      "method": "GET",
+      "path": "/employees/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/employees/:id/assignments"
+    },
+    {
+      "method": "GET",
+      "path": "/org/chart"
+    },
+    {
+      "method": "GET",
+      "path": "/directory/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/me/starred"
+    },
+    {
+      "method": "POST",
+      "path": "/me/starred/:id/toggle"
+    },
+    {
+      "method": "GET",
+      "path": "/config/organization"
+    },
+    {
+      "method": "POST",
+      "path": "/config/departments"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/departments/:name"
+    },
+    {
+      "method": "POST",
+      "path": "/config/locations"
+    },
+    {
+      "method": "POST",
+      "path": "/config/departments/:name/delete"
+    },
+    {
+      "method": "POST",
+      "path": "/config/locations/:name/delete"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/probation"
+    },
+    {
+      "method": "GET",
+      "path": "/config/celebrations"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/celebrations"
+    },
+    {
+      "method": "GET",
+      "path": "/events"
+    },
+    {
+      "method": "POST",
+      "path": "/events"
+    },
+    {
+      "method": "PATCH",
+      "path": "/events/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/events/:id/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/announcements"
+    },
+    {
+      "method": "POST",
+      "path": "/announcements"
+    },
+    {
+      "method": "PATCH",
+      "path": "/announcements/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/announcements/:id/archive"
+    },
+    {
+      "method": "GET",
+      "path": "/tickets/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/tickets"
+    },
+    {
+      "method": "GET",
+      "path": "/tickets/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/tickets"
+    },
+    {
+      "method": "POST",
+      "path": "/tickets/:id/messages"
+    },
+    {
+      "method": "POST",
+      "path": "/tickets/:id/close"
+    },
+    {
+      "method": "GET",
+      "path": "/documents"
+    },
+    {
+      "method": "POST",
+      "path": "/documents/uploads"
+    },
+    {
+      "method": "PUT",
+      "path": "/documents/uploads/:id/content"
+    },
+    {
+      "method": "PUT",
+      "path": "/me/photo"
+    },
+    {
+      "method": "DELETE",
+      "path": "/me/photo"
+    },
+    {
+      "method": "GET",
+      "path": "/me/notifications"
+    },
+    {
+      "method": "GET",
+      "path": "/me/notifications/unread-count"
+    },
+    {
+      "method": "POST",
+      "path": "/me/notifications/read-all"
+    },
+    {
+      "method": "POST",
+      "path": "/me/notifications/:id/read"
+    },
+    {
+      "method": "GET",
+      "path": "/me/notification-preferences"
+    },
+    {
+      "method": "GET",
+      "path": "/me/notification-preferences/channels"
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/notification-preferences"
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/notification-preferences/channels"
+    },
+    {
+      "method": "POST",
+      "path": "/me/phone/verification"
+    },
+    {
+      "method": "POST",
+      "path": "/me/phone/verification/confirm"
+    },
+    {
+      "method": "POST",
+      "path": "/me/phone/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/engage/feed"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/posts"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/posts/:id/reactions"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/posts/:id/comments"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/posts/:id/archive"
+    },
+    {
+      "method": "GET",
+      "path": "/engage/polls"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/polls"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/polls/:id/ballot"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/polls/:id/close"
+    },
+    {
+      "method": "GET",
+      "path": "/engage/praise"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/praise"
+    },
+    {
+      "method": "GET",
+      "path": "/me/surveys"
+    },
+    {
+      "method": "GET",
+      "path": "/engage/surveys"
+    },
+    {
+      "method": "GET",
+      "path": "/engage/surveys/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/engage/surveys/:id/results"
+    },
+    {
+      "method": "GET",
+      "path": "/engage/surveys/:id/results/export"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys"
+    },
+    {
+      "method": "PATCH",
+      "path": "/engage/surveys/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:id/responses"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:id/questions"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:id/questions/:questionId/archive"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:id/questions/:questionId/move"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:id/publish"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:id/close"
+    },
+    {
+      "method": "POST",
+      "path": "/engage/surveys/:id/archive"
+    },
+    {
+      "method": "GET",
+      "path": "/me/resignation"
+    },
+    {
+      "method": "GET",
+      "path": "/lifecycle/onboarding"
+    },
+    {
+      "method": "GET",
+      "path": "/lifecycle/offboarding"
+    },
+    {
+      "method": "GET",
+      "path": "/lifecycle/offboarding/board"
+    },
+    {
+      "method": "GET",
+      "path": "/config/checklists"
+    },
+    {
+      "method": "GET",
+      "path": "/assets"
+    },
+    {
+      "method": "GET",
+      "path": "/me/assets"
+    },
+    {
+      "method": "GET",
+      "path": "/settlements"
+    },
+    {
+      "method": "GET",
+      "path": "/settlements/:settlementId"
+    },
+    {
+      "method": "GET",
+      "path": "/letter-templates/studio"
+    },
+    {
+      "method": "GET",
+      "path": "/letters/:letterId"
+    },
+    {
+      "method": "GET",
+      "path": "/me/letters"
+    },
+    {
+      "method": "GET",
+      "path": "/policies"
+    },
+    {
+      "method": "GET",
+      "path": "/me/policies"
+    },
+    {
+      "method": "GET",
+      "path": "/config/settlement-policy"
+    },
+    {
+      "method": "POST",
+      "path": "/me/resignation"
+    },
+    {
+      "method": "POST",
+      "path": "/employees/:employeeId/exit"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/settlement-policy"
+    },
+    {
+      "method": "POST",
+      "path": "/resignations/:resignationId/withdraw"
+    },
+    {
+      "method": "POST",
+      "path": "/resignations/:resignationId/decisions"
+    },
+    {
+      "method": "POST",
+      "path": "/config/checklists/:list"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/checklists/:list/:taskId"
+    },
+    {
+      "method": "POST",
+      "path": "/config/checklists/:list/:taskId/delete"
+    },
+    {
+      "method": "PATCH",
+      "path": "/lifecycle/onboarding/:employeeId/tasks/:taskId"
+    },
+    {
+      "method": "PATCH",
+      "path": "/lifecycle/offboarding/:employeeId/tasks/:taskId"
+    },
+    {
+      "method": "POST",
+      "path": "/lifecycle/offboarding/:employeeId/complete"
+    },
+    {
+      "method": "PATCH",
+      "path": "/lifecycle/offboarding/:employeeId/clearances/:department"
+    },
+    {
+      "method": "POST",
+      "path": "/lifecycle/offboarding/:employeeId/exit-interview"
+    },
+    {
+      "method": "POST",
+      "path": "/assets"
+    },
+    {
+      "method": "PATCH",
+      "path": "/assets/:assetId"
+    },
+    {
+      "method": "POST",
+      "path": "/assets/:assetId/assignments"
+    },
+    {
+      "method": "POST",
+      "path": "/assets/:assetId/return"
+    },
+    {
+      "method": "PATCH",
+      "path": "/assets/:assetId/status"
+    },
+    {
+      "method": "POST",
+      "path": "/me/assets/:assetId/acknowledge"
+    },
+    {
+      "method": "POST",
+      "path": "/me/asset-requests"
+    },
+    {
+      "method": "POST",
+      "path": "/asset-requests/:requestId/decisions"
+    },
+    {
+      "method": "POST",
+      "path": "/letter-templates"
+    },
+    {
+      "method": "PATCH",
+      "path": "/letter-templates/:templateId"
+    },
+    {
+      "method": "POST",
+      "path": "/letters"
+    },
+    {
+      "method": "POST",
+      "path": "/me/letters"
+    },
+    {
+      "method": "POST",
+      "path": "/policies"
+    },
+    {
+      "method": "POST",
+      "path": "/policies/:policyId/reminders"
+    },
+    {
+      "method": "POST",
+      "path": "/me/policies/:policyId/acknowledgements"
+    },
+    {
+      "method": "POST",
+      "path": "/settlements"
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:settlementId/recalculate"
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:settlementId/lines"
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:settlementId/lines/:lineId/remove"
+    },
+    {
+      "method": "PATCH",
+      "path": "/settlements/:settlementId/notice-waiver"
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:settlementId/submit"
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:settlementId/decisions"
+    },
+    {
+      "method": "POST",
+      "path": "/settlements/:settlementId/payment"
+    },
+    {
+      "method": "GET",
+      "path": "/public/careers/jobs"
+    },
+    {
+      "method": "GET",
+      "path": "/public/careers/jobs/:jobId"
+    },
+    {
+      "method": "POST",
+      "path": "/public/careers/jobs/:jobId/applications"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/stats"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/jobs"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/jobs/:jobId"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/requisitions"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/candidates/:candidateId"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/candidates/:candidateId/offer"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/candidates/:candidateId/resume"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/options"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/me/interviews"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment/me/referrals"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/jobs/:jobId/referrals"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/requisitions"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/requisitions/:requisitionId/decision"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/jobs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/recruitment/jobs/:jobId"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/jobs/:jobId/state"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:candidateId/stage"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:candidateId/notes"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:candidateId/erase"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:candidateId/interviews"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/interviews/:interviewId/scorecards"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/candidates/:candidateId/offers"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/offers/:offerId/approval"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/offers/:offerId/response"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment/offers/:offerId/convert"
+    },
+    {
+      "method": "GET",
+      "path": "/performance/me"
+    },
+    {
+      "method": "GET",
+      "path": "/performance/team"
+    },
+    {
+      "method": "GET",
+      "path": "/performance/cycles/overview"
+    },
+    {
+      "method": "GET",
+      "path": "/performance/feedback"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/goals"
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/goals/:goalId"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/goals/:goalId/delete"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles/:cycleId/goal-sheet/submit"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/goals/:goalId/check-ins"
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/reviews/:reviewId/self"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/reviews/:reviewId/acknowledge"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/goal-sheets/:sheetId/decision"
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/reviews/:reviewId/manager"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles"
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/cycles/:cycleId"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles/:cycleId/advance"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles/:cycleId/calibration/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/cycles/:cycleId/calibration/reopen"
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/reviews/:reviewId/final-rating"
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/reviews/:reviewId/reviewer"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/competencies"
+    },
+    {
+      "method": "PATCH",
+      "path": "/performance/competencies/:competencyId"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/feedback"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/feedback-requests"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/feedback-requests/:requestId/decline"
+    },
+    {
+      "method": "POST",
+      "path": "/performance/one-on-ones"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/overview"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/runs/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/submit-review"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/approve"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/reject"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/publish"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/calculate"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/mark-paid"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/inputs"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/inputs/:inputId/remove"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/holds"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/runs/:id/holds/:holdId/release"
+    },
+    {
+      "method": "GET",
+      "path": "/me/payslips"
+    },
+    {
+      "method": "GET",
+      "path": "/me/payslips/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/me/compensation"
+    },
+    {
+      "method": "GET",
+      "path": "/me/salary/ytd"
+    },
+    {
+      "method": "GET",
+      "path": "/me/tax/declaration"
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/tax/declaration"
+    },
+    {
+      "method": "GET",
+      "path": "/me/tax/statement"
+    },
+    {
+      "method": "GET",
+      "path": "/me/loans"
+    },
+    {
+      "method": "POST",
+      "path": "/me/loans"
+    },
+    {
+      "method": "POST",
+      "path": "/loans/:id/decisions"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/structures"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/structures/assignments/changes"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/structures/:id/changes"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/structures/changes/:id/:decision"
+    },
+    {
+      "method": "GET",
+      "path": "/compensation/imports"
+    },
+    {
+      "method": "GET",
+      "path": "/compensation/imports/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/compensation/imports"
+    },
+    {
+      "method": "POST",
+      "path": "/compensation/imports/upload"
+    },
+    {
+      "method": "POST",
+      "path": "/compensation/imports/:id/decisions"
+    },
+    {
+      "method": "POST",
+      "path": "/compensation/imports/:id/discard"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/statutory"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/statutory/setup"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/statutory/employees"
+    },
+    {
+      "method": "PATCH",
+      "path": "/payroll/statutory/settings"
+    },
+    {
+      "method": "PATCH",
+      "path": "/payroll/statutory/pt/:state"
+    },
+    {
+      "method": "PATCH",
+      "path": "/payroll/statutory/employees/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/statutory/employees/:id/bank-verification"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/statutory/challans"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/statutory/files/:file"
+    },
+    {
+      "method": "GET",
+      "path": "/me/tax/form-16"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/form-16"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/form-16/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/form-16/:fy/generate"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/runs/:id/register/export"
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/runs/:id/bank-advice/export"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/library"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/builder"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/workforce"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/analytics/workforce"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/preview"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/saved"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/saved/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved"
+    },
+    {
+      "method": "PATCH",
+      "path": "/reports/saved/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved/:id/delete"
+    },
+    {
+      "method": "PATCH",
+      "path": "/reports/saved/:id/schedule"
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved/:id/schedule/delete"
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved/:id/schedule/run"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/exports"
+    },
+    {
+      "method": "POST",
+      "path": "/reports/exports"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/deliveries"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/deliveries/:id/download"
+    },
+    {
+      "method": "POST",
+      "path": "/reports/standard/:key/export"
+    },
+    {
+      "method": "POST",
+      "path": "/reports/custom/export"
+    },
+    {
+      "method": "POST",
+      "path": "/reports/saved/:id/export"
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/today"
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/days"
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/team/today"
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/events"
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/location-check"
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/regularizations"
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/permissions"
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/roster/me"
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/roster/planner"
+    },
+    {
+      "method": "PATCH",
+      "path": "/attendance/roster/:department/:weekStart"
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/roster/:department/:weekStart/pattern"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/weekly-offs/:department"
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/roster/swaps"
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/roster/swaps/:id/decision"
+    },
+    {
+      "method": "POST",
+      "path": "/attendance/roster/swaps/:id/cancel"
+    },
+    {
+      "method": "GET",
+      "path": "/leave/overview"
+    },
+    {
+      "method": "GET",
+      "path": "/employees/:id/leave-eligibility"
+    },
+    {
+      "method": "PATCH",
+      "path": "/employees/:id/leave-eligibility"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/requests"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/requests/:id/cancel"
+    },
+    {
+      "method": "GET",
+      "path": "/leave/calendar"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/holidays"
+    },
+    {
+      "method": "GET",
+      "path": "/leave/ledger"
+    },
+    {
+      "method": "GET",
+      "path": "/leave/ledger/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/leave/admin/people"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/admin/adjustments"
+    },
+    {
+      "method": "GET",
+      "path": "/leave/comp-off"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/comp-off/claims"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/comp-off/claims/:id/decision"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/comp-off/claims/:id/cancel"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/encashments"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/encashments/:id/decision"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/encashments/:id/cancel"
+    },
+    {
+      "method": "GET",
+      "path": "/leave/admin/year-end"
+    },
+    {
+      "method": "POST",
+      "path": "/leave/admin/year-end/:year/commit"
+    },
+    {
+      "method": "GET",
+      "path": "/me/home/who-is-out"
+    },
+    {
+      "method": "GET",
+      "path": "/expenses"
+    },
+    {
+      "method": "POST",
+      "path": "/expenses"
+    },
+    {
+      "method": "GET",
+      "path": "/me/requests"
+    },
+    {
+      "method": "GET",
+      "path": "/me/delegations"
+    },
+    {
+      "method": "POST",
+      "path": "/me/delegations"
+    },
+    {
+      "method": "POST",
+      "path": "/me/delegations/:id/revoke"
+    },
+    {
+      "method": "GET",
+      "path": "/approvals"
+    },
+    {
+      "method": "POST",
+      "path": "/approvals/:id/decisions"
+    },
+    {
+      "method": "GET",
+      "path": "/me/work-queue"
+    },
+    {
+      "method": "GET",
+      "path": "/timesheets/weeks/me"
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/weeks/me/:weekStart"
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/weeks/me/:weekStart/copy-previous"
+    },
+    {
+      "method": "GET",
+      "path": "/timesheets/team"
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/weeks/:id/decision"
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/reminders"
+    },
+    {
+      "method": "GET",
+      "path": "/projects"
+    },
+    {
+      "method": "POST",
+      "path": "/projects"
+    },
+    {
+      "method": "PATCH",
+      "path": "/projects/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/imports/attendance"
+    },
+    {
+      "method": "POST",
+      "path": "/imports/attendance/upload"
+    },
+    {
+      "method": "POST",
+      "path": "/imports/attendance"
+    },
+    {
+      "method": "GET",
+      "path": "/imports/attendance/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/imports/attendance/:id/commit"
+    },
+    {
+      "method": "POST",
+      "path": "/imports/attendance/:id/discard"
+    },
+    {
+      "method": "GET",
+      "path": "/config/holidays"
+    },
+    {
+      "method": "POST",
+      "path": "/config/holidays"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/holidays/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/config/holidays/:id/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/config/leave-types/version"
+    },
+    {
+      "method": "GET",
+      "path": "/config/leave-types"
+    },
+    {
+      "method": "POST",
+      "path": "/config/leave-types"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/leave-types/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/config/attendance"
+    },
+    {
+      "method": "POST",
+      "path": "/config/shifts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/shifts/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/config/shifts/:id/delete"
+    },
+    {
+      "method": "POST",
+      "path": "/config/shifts/:id/default"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/departments/:department/shift"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/attendance/overtime"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/attendance/late-early"
+    },
+    {
+      "method": "GET",
+      "path": "/config/sites/address-search"
+    },
+    {
+      "method": "POST",
+      "path": "/config/sites"
+    },
+    {
+      "method": "PATCH",
+      "path": "/config/sites/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/config/sites/:id/delete"
+    },
+    {
+      "method": "POST",
+      "path": "/timesheets/exports/approved"
+    }
+  ]
+}

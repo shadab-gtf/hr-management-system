@@ -1,0 +1,86 @@
+/* time module styles. Tokens only (app/styles/app.css :root); no hardcoded colors. */
+
+.time-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.time-rules {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+}
+
+/* Attendance calendar: late/early deduction flag */
+.time-cal-flag {
+  font-size: var(--fs-micro, 10px);
+  font-weight: 600;
+  color: var(--warning);
+  line-height: 1.2;
+}
+.cal-day[data-deduction="half_day"] {
+  border-color: var(--warning);
+  background: var(--warning-bg);
+}
+
+/* Roster planner grid */
+.time-roster-grid {
+  min-width: 860px;
+}
+.time-roster-grid th,
+.time-roster-grid td {
+  vertical-align: top;
+}
+.time-roster-grid th[data-past] {
+  color: var(--muted);
+}
+.time-day-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.time-holiday {
+  display: block;
+  font-size: var(--fs-micro, 10px);
+  color: var(--info);
+  font-weight: 500;
+}
+.time-roster-person {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  font-weight: 600;
+}
+.time-cell {
+  min-width: 108px;
+  font-size: var(--fs-caption, 12px);
+  padding-inline: 8px;
+}
+.time-cell[data-value="off"] {
+  background: var(--canvas);
+  color: var(--muted);
+}
+.time-cell:disabled {
+  opacity: 0.7;
+}
+.time-leave {
+  display: block;
+  margin-top: 4px;
+  color: var(--warning);
+}
+
+.date-tile[data-today] {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+@media (max-width: 639px) {
+  .time-actions {
+    justify-content: flex-start;
+  }
+}

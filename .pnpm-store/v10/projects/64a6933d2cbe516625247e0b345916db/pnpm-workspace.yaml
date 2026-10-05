@@ -1,0 +1,8 @@
+packages:
+  - .
+# Packages whose install scripts may run (pnpm 10 blocks others by default).
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - esbuild
+  - prisma
