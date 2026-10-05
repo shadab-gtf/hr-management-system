@@ -63,6 +63,15 @@ export async function liveRequest(request: LiveRequest): Promise<unknown> {
   if (!apiConfig.baseUrl)
     throw problem(500, "API_NOT_CONFIGURED", "GTF_API_BASE_URL is not set.");
 
+  let backendUrl: URL;
+  try {
+    backendUrl = new URL(apiConfig.baseUrl);
+  } catch {
+    throw problem(500, "API_NOT_CONFIGURED", "GTF_API_BASE_URL must be a valid URL.");
+  }
+  if (apiConfig.production && backendUrl.protocol !== "https:")
+    throw problem(500, "API_NOT_CONFIGURED", "GTF_API_BASE_URL must use HTTPS in production.");
+
   const url = new URL(`${apiConfig.baseUrl}/api/v1${request.path}`);
   for (const [key, value] of Object.entries(request.query ?? {}))
     if (value !== undefined && value !== null && value !== "")

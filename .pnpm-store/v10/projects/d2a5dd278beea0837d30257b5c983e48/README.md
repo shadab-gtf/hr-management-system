@@ -20,7 +20,7 @@ GTF_API_MODE=live
 GTF_API_BASE_URL=https://your-public-hr-api.example.com
 ```
 
-`GTF_API_BASE_URL` is the public HTTPS origin of the backend, without `/api/v1` (the frontend adds that prefix). Production builds fail early if the API URL is missing or not HTTPS, or if mock mode is selected. Optional settings such as `GTF_API_TIMEOUT_MS` and `GTF_SESSION_COOKIE` use the defaults in `.env.example`.
+`GTF_API_BASE_URL` is the public HTTPS origin of the backend, without `/api/v1` (the frontend adds that prefix). Production Vercel traffic always uses live mode; mock mode cannot be enabled in production. The Next.js build can complete without runtime environment variables, but live API requests will fail explicitly until a valid HTTPS `GTF_API_BASE_URL` is configured in Vercel. Optional settings such as `GTF_API_TIMEOUT_MS` and `GTF_SESSION_COOKIE` use the defaults in `.env.example`.
 
 The backend must also be deployed and reachable from Vercel. Configure its production `APP_BASE_URL` and `CORS_ORIGIN` for the frontend's stable HTTPS domain, and provision its production database, secrets and organization data independently. Do not expose backend credentials through `NEXT_PUBLIC_*` variables. Configure Preview with a separate non-production backend if preview deployments need to sign in; do not point previews at production HR data by default.
 
