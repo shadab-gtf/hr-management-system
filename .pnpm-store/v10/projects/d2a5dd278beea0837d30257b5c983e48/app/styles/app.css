@@ -460,6 +460,14 @@
     display: inline-flex;
   }
 }
+/* Phones: hide the nav drawer trigger and the language switch for now.
+   The bottom nav covers navigation here. Delete this block to bring them back. */
+@media (max-width: 767px) {
+  .topbar-menu,
+  .topbar-lang {
+    display: none;
+  }
+}
 @media (min-width: 768px) {
   .bottom-nav {
     display: none;
@@ -591,11 +599,6 @@
   .page-actions > * {
     flex: 1;
   }
-  .icon-button{
-    display: none;
-  }
-  .lang-switcher {
-    display: none;}
 }
 .back-link {
   display: inline-flex;

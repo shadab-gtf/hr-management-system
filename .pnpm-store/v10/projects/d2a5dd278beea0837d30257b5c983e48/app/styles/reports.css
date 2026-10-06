@@ -288,11 +288,9 @@
 .lang-switch {
   min-width: 44px;
   font-weight: 600;
-  display: none;
 }
 .lang-switch span[lang="hi"] {
   font-size: var(--fs-secondary);
-  display: none;
 }
 
 /* Home: who's out ---------------------------------------------------------- */
