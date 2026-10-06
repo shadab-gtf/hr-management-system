@@ -40,6 +40,6 @@ export const costCenters: Record<(typeof departments)[number], string> = {
 export const defaultShift = {
   name: "General shift",
   start: "09:30",
-  end: "18:30",
+  end: "19:00",
   graceMinutes: 15,
 } as const;

@@ -52,7 +52,7 @@ export function policyVersion(): string {
 export function shiftFor(employee: { department: string }) {
   const { shifts, departmentShifts, defaultShiftId } = db().config;
   const id = departmentShifts[employee.department] ?? defaultShiftId;
-  return shifts.find((item) => item.id === id) ?? shifts[0] ?? { id: "sh_none", name: "General shift", start: "09:30", end: "18:30", graceMinutes: 15, breakMinutes: 60 };
+  return shifts.find((item) => item.id === id) ?? shifts[0] ?? { id: "sh_none", name: "General shift", start: "09:30", end: "19:00", graceMinutes: 15, breakMinutes: 60 };
 }
 export function overtimePolicy() {
   return db().config.overtime;

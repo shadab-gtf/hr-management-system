@@ -428,13 +428,14 @@ export function WhoIsOutCard({ data, t = EN }: { data: WhoIsOut; t?: T }) {
 export function MyMonthCard({ month, t = EN }: { month: AttendanceMonth; t?: T }) {
   const s = month.summary;
   const hours = `${Math.floor(s.averageWorkedMinutes / 60)}h ${String(s.averageWorkedMinutes % 60).padStart(2, "0")}m`;
-  const rows: [string, string | number][] = [
-    [t.present, s.present],
-    [t.late, s.late],
-    [t.onLeave, s.leave],
-    [t.review, s.needsReview],
-    [t.avgHours, hours],
+  // Same tones the attendance calendar legend uses, so a colour means one thing.
+  const counts = [
+    { label: t.present, value: s.present, tone: "success" },
+    { label: t.late, value: s.late, tone: "warning" },
+    { label: t.onLeave, value: s.leave, tone: "info" },
+    { label: t.review, value: s.needsReview, tone: "danger" },
   ];
+  const recorded = counts.reduce((sum, c) => sum + c.value, 0);
   return (
     <Card labelledBy="mymonth-heading">
       <CardHeader
@@ -448,14 +449,31 @@ export function MyMonthCard({ month, t = EN }: { month: AttendanceMonth; t?: T }
         }
       />
       <CardBody>
-        <dl className="kv kv--2">
-          {rows.map(([label, value]) => (
-            <div key={label} className="kv-row">
-              <dt>{label}</dt>
-              <dd className="num">{value}</dd>
+        {recorded > 0 && (
+          /* Shape of the month at a glance; the numbers below carry the same data. */
+          <div className="month-mix" aria-hidden="true">
+            {counts
+              .filter((c) => c.value > 0)
+              .map((c) => (
+                <span key={c.label} data-tone={c.tone} style={{ width: `${(c.value * 100) / recorded}%` }} />
+              ))}
+          </div>
+        )}
+        <dl className="month-mix-stats">
+          {counts.map((c) => (
+            <div key={c.label} className="month-mix-stat" data-zero={c.value === 0 || undefined}>
+              <dt>
+                <i data-tone={c.tone} aria-hidden="true" />
+                {c.label}
+              </dt>
+              <dd className="num">{c.value}</dd>
             </div>
           ))}
         </dl>
+        <p className="month-mix-avg">
+          <span>{t.avgHours}</span>
+          <strong className="num">{hours}</strong>
+        </p>
       </CardBody>
     </Card>
   );

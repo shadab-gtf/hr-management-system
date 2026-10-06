@@ -83,8 +83,8 @@ export function AppFrame({ lang, theme, strings, entries, bottom, quickLinks, us
           </button>
           <Link href="/dashboard" className="topbar-brand" aria-label={strings.home}>
             <Image src="/brand/gtf-logo.png" alt="" width={500} height={277} sizes="36px" className="topbar-logo" />
-            <span>
-              gtf<span className="brand-hr">hr.</span>
+            <span className="brand-text">
+              gtf<span className="brand-hr">hr</span><span className="brand-dot">.</span>
             </span>
           </Link>
           <Link href="/employees" className="topbar-search">
@@ -165,8 +165,8 @@ function SidebarContent({
       {!inDrawer && (
         <Link href="/dashboard" className="app-brand" aria-label={strings.home}>
           <Image src="/brand/gtf-logo.png" alt="" width={500} height={277} sizes="40px" className="app-brand-logo" priority />
-          <span className="app-brand-text">
-            gtf<span className="brand-hr">hr.</span>
+          <span className="brand-text app-brand-text">
+            gtf<span className="brand-hr">hr</span><span className="brand-dot">.</span>
           </span>
         </Link>
       )}

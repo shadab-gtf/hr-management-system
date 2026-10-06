@@ -203,20 +203,9 @@
 .topbar-collapse {
   display: none;
 }
+/* Lockup system lives in globals.css; a placement only picks its size. */
 .topbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.8px;
-}
-.topbar-logo {
-  width: 36px;
-  height: auto;
-}
-.brand-hr {
-  font-weight: 400;
+  --lockup: 20px;
 }
 .topbar-search {
   display: none;
@@ -330,20 +319,8 @@
   gap: 16px;
 }
 .app-brand {
-  display: flex;
-  align-items: center;
-  text-transform: capitalize;
-  gap: 10px;
+  --lockup: 21px;
   padding: 4px 8px;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -1px;
-  white-space: nowrap;
-}
-.app-brand-logo {
-  width: 40px;
-  height: auto;
-  flex-shrink: 0;
 }
 .app-nav {
   scrollbar-width: thin;

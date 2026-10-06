@@ -87,6 +87,11 @@
   padding-bottom: 4px;
   scrollbar-width: thin;
 }
+@media (max-width: 639px) {
+  .rec-stage-tabs {
+    scrollbar-width: none;
+  }
+}
 .rec-stage-tabs .chip {
   flex: 0 0 auto;
   min-height: 40px;

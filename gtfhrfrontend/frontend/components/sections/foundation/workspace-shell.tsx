@@ -46,7 +46,7 @@ export function WorkspaceShell({
               priority
             />
             <span className="brand-text">
-              gtf<span className="brand-hr">hr.</span>
+              gtf<span className="brand-hr">hr</span><span className="brand-dot">.</span>
               <small>PEOPLE. POSSIBILITY.</small>
             </span>
           </Link>

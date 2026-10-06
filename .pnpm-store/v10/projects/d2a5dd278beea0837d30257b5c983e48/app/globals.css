@@ -40,39 +40,69 @@
   --duration-panel: 220ms;
 }
 [data-theme="dark"] {
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+
   color-scheme: dark;
-  --canvas: #10141c;
-  --panel: #171d27;
-  --raised: #202936;
-  --text: #f1f3f7;
-  --muted: #b3bdcc;
-  --border: #303b4b;
-  --control: #8391a5;
-  --primary: #f472b6;
-  --on-primary: #171d27;
-  --focus: #38bdf8;
-  --tint: #342332;
-  --cyan-tint: #1d3343;
-  --yellow-tint: #393421;
-  --neutral-tint: #252e3c;
-  --success: #91dfb2;
-  --success-bg: #213b30;
-  --warning: #f3d084;
-  --warning-bg: #3d3320;
-  --info: #8dd3ef;
-  --info-bg: #213745;
-  --danger: #ffb0b0;
-  --danger-bg: #412929;
-  --skeleton: #2a3544;
+
+  /* Surfaces */
+  --canvas: #000000;
+  --panel: #0a0a0a;
+  --raised: #111111;
+
+  /* Typography */
+  --text: #ededed;
+  --muted: #a1a1a1;
+
+  /* Borders / controls */
+  --border: #2e2e2e;
+  --control: #666666;
+
+  /* Primary */
+  --primary: #ffffff;
+  --on-primary: #000000;
+
+  /* Focus */
+  --focus: #ffffff;
+
+  /* Tints */
+  --tint: #171717;
+  --cyan-tint: #111111;
+  --yellow-tint: #171717;
+  --neutral-tint: #171717;
+
+  /* Semantic */
+  --success: #46d18d;
+  --success-bg: #0d2419;
+
+  --warning: #f5c451;
+  --warning-bg: #241f0d;
+
+  --info: #5eb5e6;
+  --info-bg: #0d1c24;
+
+  --danger: #ff6b6b;
+  --danger-bg: #250f0f;
+
+  /* Loading */
+  --skeleton: #1f1f1f;
+
+  /* Brand */
   --brand-magenta: #e24397;
   --brand-cyan: #2aaee4;
   --brand-yellow: #fde93d;
-  --on-brand: #111827;
-  --secondary: #38bdf8;
-  --on-secondary: #111827;
-  --overlay: #000000a6;
-  --shadow-raised: 0 18px 60px #00000073;
-  --shadow-bar: 0 -1px 0 #303b4b;
+  --on-brand: #000000;
+
+  /* Secondary */
+  --secondary: #a1a1a1;
+  --on-secondary: #000000;
+
+  /* Overlay */
+  --overlay: #000000b3;
+
+  /* Shadows */
+  --shadow-raised: 0 20px 60px rgba(0, 0, 0, 0.45);
+  --shadow-bar: 0 -1px 0 #1f1f1f;
   --shadow: none;
 }
 @media (prefers-color-scheme: dark) {
@@ -228,32 +258,83 @@ h3 {
   border-right: 1px solid var(--border);
   padding: 28px 18px 0;
 }
-.brand {
-  display: flex;
+/* ==========================================================================
+   Brand lockup - the mark and the "gtfhr." wordmark as one unit.
+   A placement sets two things: --lockup (the wordmark size) and
+   --lockup-mark (mark width, in wordmark sizes). Gap, tracking, weights
+   and tagline all derive from those, so the three placements can't drift.
+   ========================================================================== */
+.brand,
+.topbar-brand,
+.app-brand {
+  --lockup: 20px;
+  --lockup-mark: 1.85;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px 29px;
+  gap: calc(var(--lockup) * 0.44);
+  color: var(--text);
+  border-radius: 10px;
+  white-space: nowrap;
+  text-transform: none;
 }
-.brand-logo {
-  width: 42px;
+.brand-logo,
+.topbar-logo,
+.app-brand-logo {
+  width: calc(var(--lockup) * var(--lockup-mark));
   height: auto;
+  flex-shrink: 0;
+  transition: transform var(--duration-fast) var(--ease-out);
 }
-.brand > span {
-  font-size: 29px;
-  font-weight: 700;
-  letter-spacing: -1.5px;
+.brand-text {
+  font-size: var(--lockup);
   line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
+/* "hr" is the product half of the name: lighter, never a different colour. */
 .brand-hr {
-  font-weight: 400;
+  font-weight: 500;
+}
+/* The period carries the wordmark's only spot of brand colour. */
+.brand-dot {
+  color: var(--primary);
 }
 .brand small {
   display: block;
-  font-size: 8px;
-  letter-spacing: 1.6px;
-  margin-top: 9px;
+  margin-top: calc(var(--lockup) * 0.3);
+  font-size: calc(var(--lockup) * 0.31);
   font-weight: 500;
+  letter-spacing: 0.18em;
   color: var(--muted);
+}
+/* The mark lifts along its own diagonal - the strokes already lean that way. */
+.brand:hover .brand-logo,
+.topbar-brand:hover .topbar-logo,
+.app-brand:hover .app-brand-logo {
+  transform: translate(1px, -1px) scale(1.04);
+}
+.brand:active .brand-logo,
+.topbar-brand:active .topbar-logo,
+.app-brand:active .app-brand-logo {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo,
+  .topbar-logo,
+  .app-brand-logo {
+    transition: none;
+  }
+  .brand:hover .brand-logo,
+  .topbar-brand:hover .topbar-logo,
+  .app-brand:hover .app-brand-logo {
+    transform: none;
+  }
+}
+/* Foundation workspace: large wordmark, so the mark sits lower against it. */
+.brand {
+  --lockup: 29px;
+  --lockup-mark: 1.45;
+  padding: 0 12px 29px;
 }
 .workspace-label {
   border: 1px solid var(--border);
@@ -1299,16 +1380,11 @@ td {
     border-bottom: 1px solid var(--border);
   }
   .brand {
+    --lockup: 24px;
     padding: 0;
-  }
-  .brand > span {
-    font-size: 24px;
   }
   .brand small {
     display: none;
-  }
-  .brand-logo {
-    width: 34px;
   }
   .workspace-label,
   .sidebar-bottom {
