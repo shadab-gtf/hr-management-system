@@ -63,7 +63,7 @@ export function AppFrame({ lang, theme, strings, entries, bottom, quickLinks, us
         <header className="app-topbar">
           <button
             type="button"
-            className="button button--ghost icon-button topbar-menu"
+            className="button button--ghost icon-button topbar-menu "
             aria-label={strings.openNav}
             aria-haspopup="dialog"
             aria-expanded={drawer.open}

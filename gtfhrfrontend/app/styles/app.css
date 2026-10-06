@@ -591,6 +591,11 @@
   .page-actions > * {
     flex: 1;
   }
+  .icon-button{
+    display: none;
+  }
+  .lang-switcher {
+    display: none;}
 }
 .back-link {
   display: inline-flex;
